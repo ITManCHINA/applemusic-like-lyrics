@@ -3,8 +3,9 @@ use std::sync::LazyLock;
 use amll_player_core::AudioThreadEventMessage;
 use amll_player_core::AudioThreadMessage;
 use amll_player_core::{AudioPlayer, AudioPlayerConfig, AudioPlayerHandle};
-use rodio::OutputStreamHandle;
-use tauri::{AppHandle, Emitter, Manager, Runtime};
+use rodio::OutputStream;
+use rodio::OutputStreamBuilder;
+use tauri::{AppHandle, Emitter, Runtime};
 use tokio::sync::RwLock;
 use tracing::error;
 use tracing::warn;
@@ -35,14 +36,19 @@ pub async fn set_media_controls_enabled(enabled: bool) {
 }
 
 pub fn init_local_player<R: Runtime>(app: AppHandle<R>) {
-    tauri::async_runtime::spawn(async move {
-        local_player_main(app).await;
+    std::thread::spawn(move || {
+        let stream = OutputStreamBuilder::open_default_stream().expect("无法创建默认的音频输出流");
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("创建 Tokio 运行时失败");
+
+        runtime.block_on(local_player_main(app, stream));
     });
 }
 
-async fn local_player_main<R: Runtime>(app: AppHandle<R>) {
-    let handle = app.state::<OutputStreamHandle>().inner().clone();
-    let player = AudioPlayer::new(AudioPlayerConfig {}, handle);
+async fn local_player_main<R: Runtime>(app: AppHandle<R>, stream: OutputStream) {
+    let player = AudioPlayer::new(AudioPlayerConfig {}, stream);
     let handler = player.handler();
     PLAYER_HANDLER.write().await.replace(handler);
     let app_clone = app.clone();

@@ -1,13 +1,10 @@
 use crate::server::AMLLWebSocketServer;
 use amll_player_core::AudioInfo;
 use anyhow::Context;
-use anyhow::anyhow;
-use rodio::OutputStream;
+use ffmpeg_next as ffmpeg;
 use serde::*;
 use serde_json::Value;
-use std::fs::File;
 use std::net::SocketAddr;
-use symphonia::core::io::MediaSourceStream;
 use tauri::ipc::Channel;
 use tauri::{
     AppHandle, Manager, PhysicalSize, Runtime, Size, State, WebviewWindowBuilder,
@@ -121,22 +118,15 @@ async fn read_local_music_metadata(
         .to_path_buf();
 
     let audio_info = tokio::task::spawn_blocking(move || -> anyhow::Result<AudioInfo> {
-        let src = File::open(&path_clone)
+        let mut input_ctx = ffmpeg::format::input(&path_clone)
             .with_context(|| format!("无法打开文件: {}", path_clone.display()))?;
-        let mss = MediaSourceStream::new(Box::new(src), Default::default());
-
-        match symphonia::default::get_probe().format(
-            &Default::default(),
-            mss,
-            &Default::default(),
-            &Default::default(),
-        ) {
-            Ok(mut probed) => Ok(amll_player_core::utils::read_audio_info(&mut probed)),
-            Err(err) => {
-                tracing::error!("读取文件 {} 失败: {}", path_clone.display(), err);
-                Err(anyhow!("Probe failed: {}", err))
-            }
+        let mut info = amll_player_core::utils::read_audio_info(&mut input_ctx);
+        if let Some(stream) = input_ctx.streams().best(ffmpeg::media::Type::Audio) {
+            let time_base = stream.time_base();
+            let duration = stream.duration();
+            info.duration = duration as f64 * time_base.0 as f64 / time_base.1 as f64;
         }
+        Ok(info)
     })
     .await
     .map_err(|e| e.to_string())?
@@ -335,6 +325,8 @@ pub fn run() {
             })
     }
 
+    ffmpeg::init().expect("初始化 ffmpeg 失败");
+
     builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_os::init())
@@ -359,15 +351,6 @@ pub fn run() {
             reset_window_theme,
         ])
         .setup(|app| {
-            info!("正在初始化音频输出流...");
-            let (_stream, stream_handle) =
-                OutputStream::try_default().expect("无法创建默认的音频输出流");
-
-            app.manage(stream_handle);
-
-            std::mem::forget(_stream);
-            info!("音频输出流初始化成功。");
-
             player::init_local_player(app.handle().clone());
 
             #[cfg(target_os = "windows")]
