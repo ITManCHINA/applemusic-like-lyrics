@@ -11,6 +11,7 @@ import { isCJK } from "../utils/is-cjk.ts";
 import { Spring, type SpringParams } from "../utils/spring.ts";
 import { BottomLineEl } from "./bottom-line.ts";
 import { InterludeDots } from "./dom/interlude-dots.ts";
+import { MaskObsceneWordsMode } from "./index.ts";
 
 /**
  * 歌词播放器的基类，已经包含了有关歌词操作和排版的功能，子类需要为其实现对应的显示展示操作
@@ -41,6 +42,7 @@ export abstract class LyricPlayerBase
 	protected bottomLine: BottomLineEl = new BottomLineEl(this);
 	protected enableBlur = true;
 	protected enableScale = true;
+	protected maskObsceneWords = MaskObsceneWordsMode.Disabled;
 	protected hidePassedLines = false;
 	protected scrollBoundary = [0, 0];
 	protected currentLyricLineObjects: LyricLineBase[] = [];
@@ -326,6 +328,33 @@ export abstract class LyricPlayerBase
 		if (this.enableBlur === enable) return;
 		this.enableBlur = enable;
 		this.calcLayout();
+	}
+	/**
+	 * 设置歌词中不雅用语的掩码模式
+	 */
+	setMaskObsceneWords(mode: MaskObsceneWordsMode) {
+		if (this.maskObsceneWords === mode) return;
+		this.maskObsceneWords = mode;
+		this.rebuildLyricLines();
+		this.calcLayout();
+	}
+	rebuildLyricLines() {
+		for (const lineObj of this.currentLyricLineObjects) {
+			lineObj.rebuildElement();
+		}
+	}
+	/**
+	 * 根据当前配置处理不雅用语单词
+	 * @param word 单词对象
+	 * @internal
+	 */
+	processObsceneWord(word: LyricWord): string {
+		if (!word.obscene) return word.word;
+		if (this.maskObsceneWords === MaskObsceneWordsMode.Disabled)
+			return word.word;
+		if (this.maskObsceneWords === MaskObsceneWordsMode.FullMask)
+			return word.word.replace(/\S/g, "#");
+		return word.word;
 	}
 	/**
 	 * 设置目标歌词行的对齐方式，默认为 `center`
@@ -985,6 +1014,8 @@ export abstract class LyricLineBase extends EventTarget implements Disposable {
 		this.blur = blur;
 		this.delay = delay;
 	}
+	
+	rebuildElement() {}
 
 	/**
 	 * 判定歌词是否可以应用强调辉光效果

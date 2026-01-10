@@ -1,6 +1,7 @@
 import {
 	type BaseRenderer,
 	LyricPlayer as CoreLyricPlayer,
+	MaskObsceneWordsMode,
 	type LyricLine,
 	type LyricLineMouseEvent,
 	type LyricPlayerBase,
@@ -95,6 +96,13 @@ const lyricPlayerProps = {
 	hidePassedLines: {
 		type: Boolean,
 		default: false,
+	},
+	/**
+	 * 设置歌词中不雅用语的掩码模式，默认为 `MaskObsceneWordsMode.Disabled`，即不掩码
+	 */
+	maskObsceneWordsMode: {
+		type: Object as PropType<MaskObsceneWordsMode>,
+		default: MaskObsceneWordsMode.Disabled,
 	},
 	/**
 	 * 设置当前播放歌词，要注意传入后这个数组内的信息不得修改，否则会发生错误
@@ -270,6 +278,13 @@ export const LyricPlayer = defineComponent({
 		watchEffect(() => {
 			if (props.hidePassedLines !== undefined)
 				playerRef.value?.setHidePassedLines(props.hidePassedLines);
+		});
+		
+		watchEffect(() => {
+			if (props.maskObsceneWordsMode !== undefined)
+				playerRef.value?.setMaskObsceneWords(props.maskObsceneWordsMode);
+			else
+				playerRef.value?.setMaskObsceneWords(MaskObsceneWordsMode.Disabled);
 		});
 
 		watchEffect(() => {

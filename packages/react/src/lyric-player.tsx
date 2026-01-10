@@ -4,6 +4,9 @@ import type {
 	LyricPlayerBase,
 	spring,
 } from "@applemusic-like-lyrics/core";
+import {
+	MaskObsceneWordsMode
+} from "@applemusic-like-lyrics/core";
 import { LyricPlayer as DefaultLyricPlayer } from "@applemusic-like-lyrics/core";
 import {
 	type HTMLProps,
@@ -69,6 +72,10 @@ export interface LyricPlayerProps {
 	 * 设置是否隐藏已经播放过的歌词行，默认不隐藏
 	 */
 	hidePassedLines?: boolean;
+	/**
+	 * 设置歌词中不雅用语的掩码模式，默认为 `MaskObsceneWordsMode.Disabled`，即不掩码
+	 */
+	maskObsceneWordsMode?: MaskObsceneWordsMode;
 	/**
 	 * 设置当前播放歌词，要注意传入后这个数组内的信息不得修改，否则会发生错误
 	 */
@@ -165,6 +172,7 @@ export const LyricPlayer = forwardRef<
 			enableSpring,
 			enableBlur,
 			enableScale,
+			maskObsceneWordsMode,
 			hidePassedLines,
 			lyricLines,
 			currentTime,
@@ -294,6 +302,14 @@ export const LyricPlayer = forwardRef<
 			if (lineScaleSpringParams !== undefined)
 				corePlayer?.setLineScaleSpringParams(lineScaleSpringParams);
 		}, [corePlayer, lineScaleSpringParams]);
+		
+		useEffect(() => {
+			if (maskObsceneWordsMode !== undefined) {
+				corePlayer?.setMaskObsceneWords(maskObsceneWordsMode);
+			} else {
+				corePlayer?.setMaskObsceneWords(MaskObsceneWordsMode.Disabled);
+			}
+		}, [corePlayer, maskObsceneWordsMode]);
 
 		useEffect(() => {
 			if (onLyricLineClick) {

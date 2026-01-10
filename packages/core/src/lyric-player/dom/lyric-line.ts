@@ -288,7 +288,6 @@ export class LyricLineEl extends LyricLineBase {
 		if (!this.built) {
 			this.rebuildElement();
 			this.built = true;
-			this.updateMaskImageSync();
 		}
 		this.rebuildStyle();
 	}
@@ -320,7 +319,7 @@ export class LyricLineEl extends LyricLineBase {
 		}
 	}
 
-	rebuildElement() {
+	override rebuildElement() {
 		this.disposeElements();
 		const main = this.element.children[0] as HTMLDivElement;
 		const trans = this.element.children[1] as HTMLDivElement;
@@ -348,6 +347,7 @@ export class LyricLineEl extends LyricLineBase {
 			}
 		}
 		this.setSubLinesText(trans, roman);
+		this.updateMaskImageSync();
 	}
 
 	/** 设置翻译与音译行文本 */
@@ -388,7 +388,7 @@ export class LyricLineEl extends LyricLineBase {
 			if (emp) {
 				mainWordEl.classList.add(styles.emphasize);
 				const charEls: HTMLSpanElement[] = [];
-				for (const char of word.word.trim()) {
+				for (const char of this.lyricPlayer.processObsceneWord(word).trim()) {
 					const charEl = document.createElement("span");
 					charEl.innerText = char;
 					charEls.push(charEl);
@@ -412,13 +412,13 @@ export class LyricLineEl extends LyricLineBase {
 				if (word.romanWord && word.romanWord.trim().length > 0) {
 					const wordEl = document.createElement("div");
 					const romanWordEl = document.createElement("div");
-					wordEl.innerText = word.word;
+					wordEl.innerText = this.lyricPlayer.processObsceneWord(word);
 					romanWordEl.innerText = word.romanWord;
 					romanWordEl.classList.add(styles.romanWord);
 					mainWordEl.appendChild(wordEl);
 					mainWordEl.appendChild(romanWordEl);
 				} else {
-					mainWordEl.innerText = word.word;
+					mainWordEl.innerText = this.lyricPlayer.processObsceneWord(word);
 				}
 				this.splittedWords.push({
 					...word,
@@ -479,7 +479,7 @@ export class LyricLineEl extends LyricLineBase {
 		if (emp) {
 			mainWordEl.classList.add(styles.emphasize);
 			const charEls: HTMLSpanElement[] = [];
-			for (const char of chunk.word.trim()) {
+			for (const char of this.lyricPlayer.processObsceneWord(chunk).trim()) {
 				const charEl = document.createElement("span");
 				charEl.innerText = char;
 				charEls.push(charEl);
@@ -505,13 +505,13 @@ export class LyricLineEl extends LyricLineBase {
 			if (chunk.romanWord && chunk.romanWord.trim().length > 0) {
 				const wordEl = document.createElement("div");
 				const romanWordEl = document.createElement("div");
-				wordEl.innerText = chunk.word;
+				wordEl.innerText = this.lyricPlayer.processObsceneWord(chunk);
 				romanWordEl.innerText = chunk.romanWord;
 				romanWordEl.classList.add(styles.romanWord);
 				mainWordEl.appendChild(wordEl);
 				mainWordEl.appendChild(romanWordEl);
 			} else {
-				mainWordEl.innerText = chunk.word.trim();
+				mainWordEl.innerText = this.lyricPlayer.processObsceneWord(chunk).trim();
 			}
 		}
 
