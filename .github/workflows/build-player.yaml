@@ -42,6 +42,13 @@ jobs:
             artifact_name_suffix: linux-x64
             package_extension: tar.gz
             os_runner: ubuntu-latest
+          - platform: ubuntu-arm
+            args: ""
+            name: linux
+            arch: aarch64
+            artifact_name_syffix: linux-arm64
+            package_extension: tar.gz
+            os_runner: ubuntu-24.04-arm
           - platform: windows-latest
             args: ""
             name: windows
@@ -77,7 +84,7 @@ jobs:
 
     runs-on: ${{ matrix.os_runner }}
     env:
-      BUILDER_REPO: apoint123/ffmpeg-builder
+      BUILDER_REPO: ITManCHINA/ffmpeg-builder
       FFMPEG_VERSION_TAG: "7.1"
 
     steps:
@@ -103,7 +110,7 @@ jobs:
             wasm32-unknown-unknown,${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || (matrix.platform == 'windows-latest' && matrix.arch == 'aarch64') && 'aarch64-pc-windows-msvc' || '' }}
 
       - name: 安装系统依赖 (仅 Linux)
-        if: matrix.platform == 'ubuntu-latest'
+        if: matrix.platform == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
