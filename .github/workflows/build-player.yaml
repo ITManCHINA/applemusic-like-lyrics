@@ -71,7 +71,7 @@ jobs:
             wasm32-unknown-unknown,${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || (matrix.platform == 'windows-latest' && matrix.arch == 'aarch64') && 'aarch64-pc-windows-msvc' || '' }}
 
       - name: 安装系统依赖 (仅 Linux)
-        if: matrix.platform == 'linux'
+        if: matrix.platform == 'ubuntu'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -123,9 +123,13 @@ jobs:
           key: ${{ matrix.artifact_name_suffix }}
 
       - name: 安装 wasm-pack
-        uses: jetli/wasm-pack-action@v0.4.0
-        with:
-          version: "v0.13.1"
+        run: |
+          if [ "${{ matrix.arch }}" = "aarch64" ]; then
+        # 如果是 ARM 架构，通过 cargo 安装（它会自动针对当前架构编译）
+        # 增加 --version 锁定版本可以加快一点速度，或者使用缓存
+          if ! command -v wasm-pack &> /dev/null; then
+            cargo install wasm-pack
+          fi
 
       - name: 构建 AMLL Full React 包
         run: |
