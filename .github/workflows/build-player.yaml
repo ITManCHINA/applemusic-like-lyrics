@@ -128,8 +128,9 @@ jobs:
           if [ "${{ matrix.arch }}" = "aarch64" ]; then
         # 如果是 ARM 架构，通过 cargo 安装（它会自动针对当前架构编译）
         # 增加 --version 锁定版本可以加快一点速度，或者使用缓存
-          if ! command -v wasm-pack &> /dev/null; then
-            cargo install wasm-pack
+            if ! command -v wasm-pack &> /dev/null; then
+              cargo install wasm-pack
+            fi
           fi
 
       - name: 构建 AMLL Full React 包
