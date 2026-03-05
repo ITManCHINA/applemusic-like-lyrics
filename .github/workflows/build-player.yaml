@@ -2,6 +2,7 @@ name: 构建 AMLL Player Tauri 桌面版本
 on:
   push:
     branches:
+      - add-linux-arm64-binary-test
       - full-refractor
       - dev
   workflow_dispatch:
