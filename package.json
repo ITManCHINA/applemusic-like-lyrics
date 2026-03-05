@@ -4,12 +4,13 @@
 	"license": "GPL-3.0",
 	"devDependencies": {
 		"@biomejs/biome": "catalog:",
-		"lerna": "^9.0.0",
-		"nx": "^21.6.5",
+		"lerna": "^9.0.4",
+		"nx": "^22.5.2",
 		"typescript": "catalog:"
 	},
 	"scripts": {
-		"build:libs": "nx run-many --target=build --projects=tag:library"
+		"build:libs": "nx run-many --target=build --projects=tag:library",
+		"format": "biome format . --write"
 	},
 	"packageManager": "pnpm@10.18.3",
 	"pnpm": {

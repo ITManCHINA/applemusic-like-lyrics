@@ -7,11 +7,13 @@ import {
 	BackgroundRender,
 	LyricPlayer,
 	type LyricPlayerRef,
+	MeshGradientRenderer,
+	PixiRenderer,
 } from "@applemusic-like-lyrics/react";
 import structuredClone from "@ungap/structured-clone";
 import classNames from "classnames";
 import { AnimatePresence, LayoutGroup } from "framer-motion";
-import { useAtom, useAtomValue, useSetAtom } from "jotai";
+import { atom, useAtom, useAtomValue, useSetAtom } from "jotai";
 import {
 	type FC,
 	type HTMLProps,
@@ -47,7 +49,6 @@ import ShuffleActiveIcon from "./shuffle-active.svg?react";
 
 import "./icon-animations.css";
 import React from "react";
-import { useThrottle } from "../../hook/useThrottle";
 import {
 	onChangeVolumeAtom,
 	onClickAudioQualityTagAtom,
@@ -70,6 +71,7 @@ import {
 	enableLyricTranslationLineAtom,
 	hideLyricViewAtom,
 	isLyricPageOpenedAtom,
+	LyricSizePreset,
 	lyricBackgroundFPSAtom,
 	lyricBackgroundRendererAtom,
 	lyricBackgroundRenderScaleAtom,
@@ -78,6 +80,7 @@ import {
 	lyricFontWeightAtom,
 	lyricLetterSpacingAtom,
 	lyricPlayerImplementationAtom,
+	lyricSizePresetAtom,
 	lyricWordFadeWidthAtom,
 	PlayerControlsType,
 	playerControlsTypeAtom,
@@ -175,7 +178,6 @@ const PrebuiltMediaButtons: FC<{
 				return <RepeatOneActiveIcon color="#ffffffff" style={iconStyle} />;
 			case RepeatMode.All:
 				return <RepeatActiveIcon color="#ffffffff" style={iconStyle} />;
-			case RepeatMode.Off:
 			default:
 				return <RepeatIcon color="#ffffffff" style={iconStyle} />;
 		}
@@ -245,72 +247,105 @@ const TotalDurationLabel: FC = () => {
 	return <>{time}</>;
 };
 
-const PrebuiltProgressBar: FC<{ disabled?: boolean }> = React.memo(
-	({ disabled }) => {
-		const musicDuration = useAtomValue(musicDurationAtom);
-		const musicPosition = useAtomValue(musicPlayingPositionAtom);
-		const musicQualityTag = useAtomValue(musicQualityTagAtom);
-		const onClickAudioQualityTag = useAtomValue(
-			onClickAudioQualityTagAtom,
-		).onEmit;
-		const onSeekPosition = useAtomValue(onSeekPositionAtom).onEmit;
-
-		const [showRemaining, setShowRemaining] = useAtom(showRemainingTimeAtom);
-
-		const fontFamily = useAtomValue(lyricFontFamilyAtom);
-		const fontWeight = useAtomValue(lyricFontWeightAtom);
-		const letterSpacing = useAtomValue(lyricLetterSpacingAtom);
-
-		const fontStyle = useMemo(
-			() => ({
-				fontFamily: fontFamily || undefined,
-				fontWeight: fontWeight || undefined,
-				letterSpacing: letterSpacing || undefined,
-			}),
-			[fontFamily, fontWeight, letterSpacing],
-		);
-
-		const throttledSeek = useThrottle((position: number) => {
-			onSeekPosition?.(position);
-		}, 100);
-
-		return (
-			<div>
-				<BouncingSlider
-					min={0}
-					max={musicDuration}
-					value={musicPosition}
-					onChange={throttledSeek}
-					disabled={disabled}
-				/>
-				<div className={styles.progressBarLabels}>
-					<div style={fontStyle}>
-						<TimeLabel />
-					</div>
-					<div>
-						<AnimatePresence mode="popLayout">
-							{musicQualityTag && (
-								<AudioQualityTag
-									className={styles.qualityTag}
-									isDolbyAtmos={musicQualityTag.isDolbyAtmos}
-									tagText={musicQualityTag.tagText}
-									tagIcon={musicQualityTag.tagIcon}
-									onClick={onClickAudioQualityTag}
-								/>
-							)}
-						</AnimatePresence>
-					</div>
-					<div
-						style={{ ...fontStyle, cursor: "pointer", userSelect: "none" }}
-						onClick={() => setShowRemaining(!showRemaining)}
-					>
-						{showRemaining ? <TimeLabel isRemaining /> : <TotalDurationLabel />}
-					</div>
-				</div>
-			</div>
-		);
-	},
+const manualSeekTriggerAtom = atom<{ time: number; timestamp: number } | null>(
+	null,
 );
+
+const PrebuiltProgressBar: FC = React.memo(() => {
+	const musicDuration = useAtomValue(musicDurationAtom);
+	const musicPosition = useAtomValue(musicPlayingPositionAtom);
+	const musicIsPlaying = useAtomValue(musicPlayingAtom);
+	const musicQualityTag = useAtomValue(musicQualityTagAtom);
+	const onClickAudioQualityTag = useAtomValue(
+		onClickAudioQualityTagAtom,
+	).onEmit;
+	const onSeekPosition = useAtomValue(onSeekPositionAtom).onEmit;
+	const setManualSeekTrigger = useSetAtom(manualSeekTriggerAtom);
+
+	const [showRemaining, setShowRemaining] = useAtom(showRemainingTimeAtom);
+
+	const fontFamily = useAtomValue(lyricFontFamilyAtom);
+	const fontWeight = useAtomValue(lyricFontWeightAtom);
+	const letterSpacing = useAtomValue(lyricLetterSpacingAtom);
+
+	const fontStyle = useMemo(
+		() => ({
+			fontFamily: fontFamily || undefined,
+			fontWeight: fontWeight || undefined,
+			letterSpacing: letterSpacing || undefined,
+		}),
+		[fontFamily, fontWeight, letterSpacing],
+	);
+
+	const handleSeek = (position: number) => {
+		onSeekPosition?.(position);
+		setManualSeekTrigger({ time: position, timestamp: Date.now() });
+	};
+
+	return (
+		<div>
+			<BouncingSlider
+				isPlaying={musicIsPlaying}
+				min={0}
+				max={musicDuration}
+				value={musicPosition}
+				onChange={handleSeek}
+			/>
+			<div className={styles.progressBarLabels}>
+				<div style={fontStyle}>
+					<TimeLabel />
+				</div>
+				<div>
+					<AnimatePresence mode="popLayout">
+						{musicQualityTag && (
+							<AudioQualityTag
+								className={styles.qualityTag}
+								isDolbyAtmos={musicQualityTag.isDolbyAtmos}
+								tagText={musicQualityTag.tagText}
+								tagIcon={musicQualityTag.tagIcon}
+								onClick={onClickAudioQualityTag}
+							/>
+						)}
+					</AnimatePresence>
+				</div>
+				<button
+					type="button"
+					style={{
+						...fontStyle,
+						cursor: "pointer",
+						userSelect: "none",
+						background: "none",
+						border: "none",
+						padding: 0,
+						color: "inherit",
+					}}
+					onClick={() => setShowRemaining(!showRemaining)}
+				>
+					{showRemaining ? <TimeLabel isRemaining /> : <TotalDurationLabel />}
+				</button>
+			</div>
+		</div>
+	);
+});
+
+function getLyricFontSizeFromPreset(preset: LyricSizePreset): string {
+	switch (preset) {
+		case LyricSizePreset.Tiny:
+			return "max(max(2.5vh, 1.25vw), 10px)";
+		case LyricSizePreset.ExtraSmall:
+			return "max(max(3vh, 1.5vw), 10px)";
+		case LyricSizePreset.Small:
+			return "max(max(4vh, 2vw), 12px)";
+		case LyricSizePreset.Large:
+			return "max(max(6vh, 3vw), 16px)";
+		case LyricSizePreset.ExtraLarge:
+			return "max(max(7vh, 3.5vw), 18px)";
+		case LyricSizePreset.Huge:
+			return "max(max(8vh, 4vw), 20px)";
+		default:
+			return "max(max(5vh, 2.5vw), 14px)";
+	}
+}
 
 const PrebuiltCoreLyricPlayer: FC<{
 	alignPosition: number;
@@ -325,6 +360,7 @@ const PrebuiltCoreLyricPlayer: FC<{
 	const lyricFontFamily = useAtomValue(lyricFontFamilyAtom);
 	const lyricFontWeight = useAtomValue(lyricFontWeightAtom);
 	const lyricLetterSpacing = useAtomValue(lyricLetterSpacingAtom);
+	const lyricSizePreset = useAtomValue(lyricSizePresetAtom);
 
 	const lyricPlayerImplementation = useAtomValue(
 		lyricPlayerImplementationAtom,
@@ -349,6 +385,7 @@ const PrebuiltCoreLyricPlayer: FC<{
 	const onLyricLineContextMenu = useAtomValue(
 		onLyricLineContextMenuAtom,
 	).onEmit;
+	const manualSeekTrigger = useAtomValue(manualSeekTriggerAtom);
 
 	const processedLyricLines = useMemo(() => {
 		const processed = structuredClone(lyricLines);
@@ -370,15 +407,7 @@ const PrebuiltCoreLyricPlayer: FC<{
 				];
 			}
 		}
-		return processed.map((line: any) => ({
-			...line,
-			words: Array.isArray(line.words)
-				? line.words.map((word: any) => ({
-						...word,
-						obscene: typeof word.obscene === "boolean" ? word.obscene : false,
-					}))
-				: [],
-		}));
+		return processed;
 	}, [
 		lyricLines,
 		enableLyricTranslationLine,
@@ -386,15 +415,27 @@ const PrebuiltCoreLyricPlayer: FC<{
 		enableLyricSwapTransRomanLine,
 	]);
 
+	useEffect(() => {
+		if (manualSeekTrigger) {
+			amllPlayerRef.current?.lyricPlayer?.setCurrentTime(
+				manualSeekTrigger.time,
+				true,
+			);
+		}
+	}, [manualSeekTrigger]);
+
 	return (
 		<LyricPlayer
-			style={{
-				width: "100%",
-				height: "100%",
-				fontFamily: lyricFontFamily || undefined,
-				fontWeight: lyricFontWeight || undefined,
-				letterSpacing: lyricLetterSpacing || undefined,
-			}}
+			style={
+				{
+					width: "100%",
+					height: "100%",
+					fontFamily: lyricFontFamily || undefined,
+					fontWeight: lyricFontWeight || undefined,
+					letterSpacing: lyricLetterSpacing || undefined,
+					"--amll-lp-font-size": getLyricFontSizeFromPreset(lyricSizePreset),
+				} as React.CSSProperties
+			}
 			ref={amllPlayerRef}
 			playing={musicIsPlaying}
 			disabled={!isLyricPageOpened}
@@ -405,9 +446,13 @@ const PrebuiltCoreLyricPlayer: FC<{
 			enableBlur={enableLyricLineBlurEffect}
 			enableScale={enableLyricLineScaleEffect}
 			enableSpring={enableLyricLineSpringAnimation}
-			wordFadeWidth={Math.max(0.01, lyricWordFadeWidth)}
+			wordFadeWidth={lyricWordFadeWidth}
 			lyricPlayer={lyricPlayerImplementation}
-			onLyricLineClick={(evt) => onLyricLineClick?.(evt, amllPlayerRef.current)}
+			onLyricLineClick={(evt) => {
+				const targetTime = evt.line.getLine().startTime;
+				amllPlayerRef.current?.lyricPlayer?.setCurrentTime(targetTime, true);
+				onLyricLineClick?.(evt, amllPlayerRef.current);
+			}}
 			onLyricLineContextMenu={(evt) =>
 				onLyricLineContextMenu?.(evt, amllPlayerRef.current)
 			}
@@ -422,11 +467,6 @@ const PrebuiltVolumeControl: FC<{
 	const musicVolume = useAtomValue(musicVolumeAtom);
 	const onChangeVolume = useAtomValue(onChangeVolumeAtom).onEmit;
 	const showVolumeControl = useAtomValue(showVolumeControlAtom);
-
-	const throttledOnChangeVolume = useThrottle((volume: number) => {
-		onChangeVolume?.(volume);
-	}, 100);
-
 	if (showVolumeControl)
 		return (
 			<VolumeControl
@@ -435,7 +475,7 @@ const PrebuiltVolumeControl: FC<{
 				max={1}
 				style={style}
 				className={className}
-				onChange={throttledOnChangeVolume}
+				onChange={onChangeVolume}
 			/>
 		);
 	return null;
@@ -492,81 +532,34 @@ export const PrebuiltLyricPlayer: FC<HTMLProps<HTMLDivElement>> = ({
 		"top",
 	);
 	const coverElRef = useRef<HTMLDivElement>(null);
-	const layoutRef = useRef<HTMLDivElement>(null);
+	const [layoutEl, setLayoutEl] = useState<HTMLDivElement | null>(null);
 	const backgroundRenderer = useAtomValue(lyricBackgroundRendererAtom);
 	const showBottomControl = useAtomValue(showBottomControlAtom);
-
-	const [isHoveringTitlebar, setIsHoveringTitlebar] = useState(false);
-	const [isGracePeriodOver, setIsGracePeriodOver] = useState(false);
 
 	const cssBackgroundProperty = useAtomValue(cssBackgroundPropertyAtom);
 
 	useLayoutEffect(() => {
 		// 如果是水平布局，则让歌词对齐到封面的中心
-		if (!isVertical && coverElRef.current && layoutRef.current) {
+		if (!isVertical && coverElRef.current && layoutEl) {
 			const obz = new ResizeObserver(() => {
-				if (!(coverElRef.current && layoutRef.current)) return;
+				if (!(coverElRef.current && layoutEl)) return;
 				const coverB = coverElRef.current.getBoundingClientRect();
-				const layoutB = layoutRef.current.getBoundingClientRect();
+				const layoutB = layoutEl.getBoundingClientRect();
 				setAlignPosition(
 					(coverB.top + coverB.height / 2 - layoutB.top) / layoutB.height,
 				);
 			});
 			obz.observe(coverElRef.current);
-			obz.observe(layoutRef.current);
+			obz.observe(layoutEl);
 			setAlignAnchor("center");
 			return () => obz.disconnect();
 		}
 		// 如果是垂直布局，则把歌词对齐到顶部（歌曲信息下方）
-		if (isVertical && layoutRef.current) {
+		if (isVertical) {
 			setAlignPosition(0.1);
 			setAlignAnchor("top");
 		}
-	}, [isVertical]);
-
-	useEffect(() => {
-		if (isLyricPageOpened) {
-			setIsGracePeriodOver(false);
-			const timerId = setTimeout(() => {
-				setIsGracePeriodOver(true);
-			}, 5000);
-			return () => clearTimeout(timerId);
-		}
-	}, [isLyricPageOpened]);
-
-	useEffect(() => {
-		const titlebarArea = document.getElementById("system-titlebar");
-		if (!titlebarArea) return;
-
-		const handleMouseEnter = () => setIsHoveringTitlebar(true);
-		const handleMouseLeave = () => setIsHoveringTitlebar(false);
-
-		if (isLyricPageOpened) {
-			titlebarArea.addEventListener("mouseenter", handleMouseEnter);
-			titlebarArea.addEventListener("mouseleave", handleMouseLeave);
-		} else {
-			setIsHoveringTitlebar(false);
-		}
-
-		return () => {
-			titlebarArea.removeEventListener("mouseenter", handleMouseEnter);
-			titlebarArea.removeEventListener("mouseleave", handleMouseLeave);
-		};
-	}, [isLyricPageOpened]);
-
-	useEffect(() => {
-		const titlebarButtons = document.getElementById("system-titlebar-buttons");
-		if (!titlebarButtons) return;
-
-		titlebarButtons.style.transition =
-			"opacity 0.3s ease-in-out, pointer-events 0.3s";
-
-		const shouldBeVisible =
-			!isLyricPageOpened || isHoveringTitlebar || !isGracePeriodOver;
-
-		titlebarButtons.style.opacity = shouldBeVisible ? "1" : "0";
-		titlebarButtons.style.pointerEvents = shouldBeVisible ? "auto" : "none";
-	}, [isLyricPageOpened, isHoveringTitlebar, isGracePeriodOver]);
+	}, [isVertical, layoutEl]);
 
 	const verticalImmerseCover =
 		hideLyricView &&
@@ -577,7 +570,7 @@ export const PrebuiltLyricPlayer: FC<HTMLProps<HTMLDivElement>> = ({
 	return (
 		<LayoutGroup>
 			<AutoLyricLayout
-				ref={layoutRef}
+				onElementMounted={setLayoutEl}
 				className={classNames(styles.autoLyricLayout, className)}
 				onLayoutChange={setIsVertical}
 				verticalImmerseCover={verticalImmerseCover}
@@ -621,7 +614,13 @@ export const PrebuiltLyricPlayer: FC<HTMLProps<HTMLDivElement>> = ({
 							lowFreqVolume={lowFreqVolume}
 							renderScale={lyricBackgroundRenderScale}
 							fps={lyricBackgroundFPS}
-							renderer={(backgroundRenderer as any).renderer}
+							renderer={
+								typeof backgroundRenderer.renderer === "string"
+									? backgroundRenderer.renderer === "pixi"
+										? PixiRenderer
+										: MeshGradientRenderer
+									: backgroundRenderer.renderer
+							}
 							staticMode={lyricBackgroundStaticMode || !isLyricPageOpened}
 							style={{
 								zIndex: -1,

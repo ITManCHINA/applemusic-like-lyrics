@@ -3,9 +3,9 @@ import { chunkAndSplitLyricWords } from "../../utils/lyric-split-words.ts";
 import { LyricLineBase } from "../base.ts";
 import type { CanvasLyricPlayer } from "./index.ts";
 import {
+	layoutLine,
 	type TextLayoutConfig,
 	type TextLayoutResult,
-	layoutLine,
 } from "./text-layout";
 
 export class CanvasLyricLine extends LyricLineBase {
@@ -73,7 +73,15 @@ export class CanvasLyricLine extends LyricLineBase {
 			}
 		}
 		this.layoutWords = [
-			[...layoutLine(ctx, this.line.words.map((w) => w.word).join(""), config)],
+			[
+				...layoutLine(
+					ctx,
+					this.line.words
+						.map((w) => this.player.processObsceneWord(w))
+						.join(""),
+					config,
+				),
+			],
 		];
 		this.player.setFontSize(0.5);
 		this.translatedLayoutWords = [

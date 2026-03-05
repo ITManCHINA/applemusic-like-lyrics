@@ -6,6 +6,9 @@ on:
       - dev
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -164,16 +167,13 @@ jobs:
           fi
         shell: bash
 
-      - name: 安装 sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: 配置 sccache
-        run: |
-          echo "RUSTC_WRAPPER=${{ env.SCCACHE_PATH }}" >> $GITHUB_ENV
-          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
-          echo "ACTIONS_CACHE_URL=${{ env.ACTIONS_CACHE_URL }}" >> $GITHUB_ENV
-          echo "ACTIONS_RUNTIME_TOKEN=${{ env.ACTIONS_RUNTIME_TOKEN }}" >> $GITHUB_ENV
-        shell: bash
+      - name: 配置 Rust 缓存
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            packages/player/src-tauri -> target
+          key: ${{ matrix.artifact_name_suffix }}
 
       # macOS 自带的 Xcode LLVM 不支持 WASM 目标
       - name: "macOS: 安装 LLVM 和 Clang"
@@ -203,7 +203,11 @@ jobs:
           AMLL_GITHUB_IS_ACTION: true
 
       - name: 生成开发构建版本号
+        shell: bash
         run: |
+          if [[ "${{ runner.os }}" == "macOS" ]]; then
+            export PATH="/usr/bin:$PATH"
+          fi
           node ./packages/player/scripts/gen-dev-version.mjs
 
       - name: 构建 AMLL Player 程序并发布自动构建
@@ -270,16 +274,13 @@ jobs:
       - name: 安装 wasm32 目标
         run: rustup target add wasm32-unknown-unknown
 
-      - name: 安装 sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
-      - name: 配置 sccache
-        run: |
-          echo "RUSTC_WRAPPER=${{ env.SCCACHE_PATH }}" >> $GITHUB_ENV
-          echo "SCCACHE_GHA_ENABLED=true" >> $GITHUB_ENV
-          echo "ACTIONS_CACHE_URL=${{ env.ACTIONS_CACHE_URL }}" >> $GITHUB_ENV
-          echo "ACTIONS_RUNTIME_TOKEN=${{ env.ACTIONS_RUNTIME_TOKEN }}" >> $GITHUB_ENV
-        shell: bash
+      - name: 配置 Rust 缓存
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            packages/player/src-tauri -> target
+          key: android
 
       - name: 安装 FFmpeg 所需系统依赖
         run: |
@@ -340,11 +341,9 @@ jobs:
         env:
           CARGO_NDK_ANDROID_PLATFORM: 26
         run: |
-          sccache --show-stats
           export NDK_HOME=$ANDROID_NDK_HOME
           export JAVA_HOME=$JAVA_HOME_17_X64
           pnpm -F player tauri android build --split-per-abi
-          sccache --show-stats
 
       - name: 上传产物到 Action Artifact
         uses: actions/upload-artifact@v4

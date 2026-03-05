@@ -17,9 +17,6 @@ mod player;
 mod screen_capture;
 mod server;
 
-#[cfg(target_os = "windows")]
-mod external_media_controller;
-
 pub type AMLLWebSocketServerWrapper = RwLock<AMLLWebSocketServer>;
 pub type AMLLWebSocketServerState<'r> = State<'r, AMLLWebSocketServerWrapper>;
 
@@ -59,19 +56,6 @@ async fn ws_broadcast_payload(
 #[tauri::command]
 fn restart_app<R: Runtime>(app: AppHandle<R>) {
     tauri::process::restart(&app.env())
-}
-
-#[tauri::command]
-async fn reset_window_theme<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
-    if let Some(window) = app.get_webview_window("main") {
-        #[cfg(desktop)]
-        if let Err(e) = window.set_theme(None) {
-            return Err(e.to_string());
-        }
-        Ok(())
-    } else {
-        Err("Main window not found.".to_string())
-    }
 }
 
 #[derive(Default, Clone, Serialize, Deserialize)]
@@ -278,7 +262,7 @@ fn init_logging() {
     #[cfg(debug_assertions)]
     {
         tracing_subscriber::fmt()
-            .with_env_filter("amll_player=trace,smtc_suite=debug,wry=info")
+            .with_env_filter("amll_player=trace,wry=info")
             .with_thread_names(true)
             .with_timer(tracing_subscriber::fmt::time::uptime())
             .init();
@@ -344,22 +328,9 @@ pub fn run() {
             player::set_media_controls_enabled,
             read_local_music_metadata,
             restart_app,
-            #[cfg(target_os = "windows")]
-            external_media_controller::control_external_media,
-            #[cfg(target_os = "windows")]
-            external_media_controller::request_smtc_update,
-            reset_window_theme,
         ])
         .setup(|app| {
             player::init_local_player(app.handle().clone());
-
-            #[cfg(target_os = "windows")]
-            {
-                info!("正在初始化外部媒体控制器...");
-                let controller_state =
-                    external_media_controller::start_listener(app.handle().clone());
-                app.manage(controller_state);
-            }
 
             #[cfg(desktop)]
             let _ = app

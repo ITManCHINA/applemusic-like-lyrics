@@ -279,12 +279,11 @@ export const LyricPlayer = defineComponent({
 			if (props.hidePassedLines !== undefined)
 				playerRef.value?.setHidePassedLines(props.hidePassedLines);
 		});
-		
+
 		watchEffect(() => {
 			if (props.maskObsceneWordsMode !== undefined)
 				playerRef.value?.setMaskObsceneWords(props.maskObsceneWordsMode);
-			else
-				playerRef.value?.setMaskObsceneWords(MaskObsceneWordsMode.Disabled);
+			else playerRef.value?.setMaskObsceneWords(MaskObsceneWordsMode.Disabled);
 		});
 
 		watchEffect(() => {

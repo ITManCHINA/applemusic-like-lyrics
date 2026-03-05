@@ -5,12 +5,12 @@ import type {
 	spring,
 } from "@applemusic-like-lyrics/core";
 import {
-	MaskObsceneWordsMode
+	LyricPlayer as DefaultLyricPlayer,
+	MaskObsceneWordsMode,
 } from "@applemusic-like-lyrics/core";
-import { LyricPlayer as DefaultLyricPlayer } from "@applemusic-like-lyrics/core";
 import {
-	type HTMLProps,
 	forwardRef,
+	type HTMLProps,
 	useEffect,
 	useImperativeHandle,
 	useLayoutEffect,
@@ -76,6 +76,10 @@ export interface LyricPlayerProps {
 	 * 设置歌词中不雅用语的掩码模式，默认为 `MaskObsceneWordsMode.Disabled`，即不掩码
 	 */
 	maskObsceneWordsMode?: MaskObsceneWordsMode;
+	/**
+	 * 设置不雅用语掩码使用的字符，默认为 `*`
+	 */
+	maskObsceneWordChar?: string;
 	/**
 	 * 设置当前播放歌词，要注意传入后这个数组内的信息不得修改，否则会发生错误
 	 */
@@ -173,6 +177,7 @@ export const LyricPlayer = forwardRef<
 			enableBlur,
 			enableScale,
 			maskObsceneWordsMode,
+			maskObsceneWordChar,
 			hidePassedLines,
 			lyricLines,
 			currentTime,
@@ -275,10 +280,10 @@ export const LyricPlayer = forwardRef<
 
 		useEffect(() => {
 			if (currentTime !== undefined) {
-				corePlayer?.setCurrentTime(currentTime);
+				corePlayer?.setCurrentTime(currentTime, isSeeking);
 				currentTimeRef.current = currentTime;
 			} else corePlayer?.setCurrentTime(0);
-		}, [corePlayer, currentTime]);
+		}, [corePlayer, currentTime, isSeeking]);
 
 		useEffect(() => {
 			corePlayer?.setIsSeeking(!!isSeeking);
@@ -302,7 +307,7 @@ export const LyricPlayer = forwardRef<
 			if (lineScaleSpringParams !== undefined)
 				corePlayer?.setLineScaleSpringParams(lineScaleSpringParams);
 		}, [corePlayer, lineScaleSpringParams]);
-		
+
 		useEffect(() => {
 			if (maskObsceneWordsMode !== undefined) {
 				corePlayer?.setMaskObsceneWords(maskObsceneWordsMode);
@@ -310,6 +315,12 @@ export const LyricPlayer = forwardRef<
 				corePlayer?.setMaskObsceneWords(MaskObsceneWordsMode.Disabled);
 			}
 		}, [corePlayer, maskObsceneWordsMode]);
+
+		useEffect(() => {
+			if (maskObsceneWordChar !== undefined) {
+				corePlayer?.setMaskObsceneWordChar(maskObsceneWordChar);
+			}
+		}, [corePlayer, maskObsceneWordChar]);
 
 		useEffect(() => {
 			if (onLyricLineClick) {

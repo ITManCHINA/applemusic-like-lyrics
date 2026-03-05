@@ -32,9 +32,8 @@ import {
 	musicQualityTagAtom,
 	musicVolumeAtom,
 	onChangeVolumeAtom,
+	onClickAudioQualityTagAtom,
 	onClickControlThumbAtom,
-	onClickLeftFunctionButtonAtom,
-	onClickRightFunctionButtonAtom,
 	onLyricLineClickAtom,
 	onPlayOrResumeAtom,
 	onRequestNextSongAtom,
@@ -52,6 +51,7 @@ import { toast } from "react-toastify";
 import { db } from "../../dexie.ts";
 import {
 	advanceLyricDynamicLyricTimeAtom,
+	audioQualityDialogOpenedAtom,
 	enableMediaControlsAtom,
 } from "../../states/appAtoms.ts";
 import {
@@ -658,6 +658,13 @@ export const LocalMusicContext: FC = () => {
 		const toEmit = <T,>(onEmit: T) => ({ onEmit });
 
 		store.set(
+			onClickAudioQualityTagAtom,
+			toEmit(() => {
+				store.set(audioQualityDialogOpenedAtom, true);
+			}),
+		);
+
+		store.set(
 			onPlayOrResumeAtom,
 			toEmit(() => {
 				emitAudioThread("resumeOrPauseAudio");
@@ -701,22 +708,6 @@ export const LocalMusicContext: FC = () => {
 			toEmit(() => {
 				toast.info(
 					t("amll.openMenuViaRightClick", "请右键歌词页任意位置来打开菜单哦！"),
-				);
-			}),
-		);
-		store.set(
-			onClickLeftFunctionButtonAtom,
-			toEmit(() => {
-				toast.info(
-					t("amll.buttonForDisplayOnly", "此按钮仅供展示用途，暂无实际功能"),
-				);
-			}),
-		);
-		store.set(
-			onClickRightFunctionButtonAtom,
-			toEmit(() => {
-				toast.info(
-					t("amll.buttonForDisplayOnly", "此按钮仅供展示用途，暂无实际功能"),
 				);
 			}),
 		);
@@ -785,6 +776,7 @@ export const LocalMusicContext: FC = () => {
 			unlistenPromise.then((unlisten) => unlisten());
 
 			const doNothing = toEmit(() => {});
+			store.set(onClickAudioQualityTagAtom, doNothing);
 			store.set(onRequestNextSongAtom, doNothing);
 			store.set(onRequestPrevSongAtom, doNothing);
 			store.set(onPlayOrResumeAtom, doNothing);
@@ -793,8 +785,6 @@ export const LocalMusicContext: FC = () => {
 			store.set(onLyricLineClickAtom, doNothing);
 			store.set(onChangeVolumeAtom, doNothing);
 			store.set(onRequestOpenMenuAtom, doNothing);
-			store.set(onClickLeftFunctionButtonAtom, doNothing);
-			store.set(onClickRightFunctionButtonAtom, doNothing);
 		};
 	}, [store, t]);
 
