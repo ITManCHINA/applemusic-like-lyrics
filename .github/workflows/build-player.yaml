@@ -39,7 +39,7 @@ jobs:
             args: ""
             name: linux
             arch: aarch64
-            artifact_name_syffix: linux-arm64
+            artifact_name_suffix: linux-arm64
             package_extension: tar.gz
             os_runner: ubuntu-24.04-arm
 
