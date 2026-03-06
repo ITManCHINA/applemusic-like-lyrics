@@ -108,7 +108,7 @@ jobs:
           FFMPEG_PKG_CONFIG="${{ github.workspace }}/vendor/ffmpeg/lib/pkgconfig"
           SYSTEM_PKG_CONFIG="/usr/lib/aarch64-linux-gnu/pkgconfig:/usr/share/pkgconfig:/usr/lib/pkgconfig"
           echo "FFMPEG_DIR=${{ github.workspace }}/vendor/ffmpeg" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=${{ github.workspace }}/vendor/ffmpeg/lib/pkgconfig" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$FFMPEG_PKG_CONFIG:$SYSTEM_PKG_CONFIG" >> $GITHUB_ENV
         shell: bash
 
       - name: 配置 Rust 缓存
