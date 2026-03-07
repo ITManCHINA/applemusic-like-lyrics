@@ -98,25 +98,41 @@ jobs:
 
       - name: 编译 Rust 静态库并构建 iOS 项目
         run: |
-          # 1. 确保在正确的目录下
           cd packages/player
           
-          # 2. 直接使用 tauri-cli 编译 iOS 端的 Rust 库
-          pnpm tauri ios build --verbose || echo "Tauri build finished with expected signing error"
-          
-          # 3. 进入生成的苹果项目目录
-          cd src-tauri/gen/apple
+          # 1. 使用 Tauri 官方推荐的构建方式（会自动处理环境变量）
+          # 我们先尝试不加 --no-bundle，如果报错则改用 cargo build
+          pnpm tauri ios build --debug || \
+          cargo build --target aarch64-apple-ios --manifest-path src-tauri/Cargo.toml
 
+          # 2. 进入苹果项目目录
+          cd src-tauri/gen/apple
+          
+          # 3. 【优化核心】智能寻找并搬运 libapp.a
+          # 无论是在 target/aarch64-apple-ios/debug 还是 release，直接通通搜出来
+          echo "正在定位 Rust 静态库..."
+          LIB_PATH=$(find ../../target/aarch64-apple-ios -name "libapp.a" -type f | head -n 1)
+          
+          if [ -z "$LIB_PATH" ]; then
+            echo "❌ 错误：在 target 目录下未找到 libapp.a"
+            find ../../target -name "*.a" # 打印所有静态库方便调试
+            exit 1
+          fi
+          
+          echo "✅ 找到静态库: $LIB_PATH"
+          
+          # 创建 Xcode 预期的构建目录并拷贝
+          mkdir -p build/debug-iphoneos
+          cp "$LIB_PATH" build/debug-iphoneos/libapp.a
+          
+          # 4. 【黑科技】移除报错脚本，防止 Xcode 乱跑
           sed -i '' '/tauri ios xcode-script/d' amll-player.xcodeproj/project.pbxproj
           
-          # 4. 执行 xcodebuild，但告诉它不要去跑那个报错的“Build Rust Code”脚本
-          # 我们通过把该脚本的操作置空来实现
-          export TAURI_ENV_DEBUG=false
-          export CONFIGURATION=Release
+          # 5. 执行最终链接编译
           xcodebuild build \
             -project amll-player.xcodeproj \
             -scheme amll-player_iOS \
-            -configuration Release \
+            -configuration Debug \
             -sdk iphoneos \
             -arch arm64 \
             SYMROOT="$(pwd)/build" \
