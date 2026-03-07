@@ -17,7 +17,7 @@ concurrency:
 jobs:
   build-tauri-ios:
     name: 构建 iOS 产物
-    runs-on: macos-14
+    runs-on: macos-15
 
     steps:
       - uses: actions/checkout@v4
