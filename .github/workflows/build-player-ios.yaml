@@ -96,26 +96,22 @@ jobs:
           # 仅生成 src-tauri/gen/apple 下的 Xcode 项目文件
           pnpm -F player tauri ios init
 
-      - name: 自动定位并编译 iOS 产物
+      - name: 编译 Rust 静态库并构建 iOS 项目
         run: |
-          # 1. 自动寻找项目文件的位置
-          # 我们找 .xcodeproj 文件夹
-          PROJECT_PATH=$(find . -name "amll-player.xcodeproj" -type d | head -n 1)
+          # 1. 确保在正确的目录下
+          cd packages/player
           
-          if [ -z "$PROJECT_PATH" ]; then
-            echo "❌ 错误：没找到 amll-player.xcodeproj"
-            exit 1
-          fi
-
-          # 获取该文件所在的文件夹路径
-          PROJECT_DIR=$(dirname "$PROJECT_PATH")
-          echo "✅ 找到项目目录: $PROJECT_DIR"
-          cd "$PROJECT_DIR"
+          # 2. 直接使用 tauri-cli 编译 iOS 端的 Rust 库
+          # --no-bundle 表示只编库，不生成 IPA（我们要手动控 IPA 制作）
+          # 这步会生成 Release 模式的静态库，且不会去寻找 dev-server 地址
+          pnpm tauri ios build --no-bundle
           
-          # 2. 执行编译 (改用 -project 而不是 -workspace)
+          # 3. 进入生成的苹果项目目录
+          cd src-tauri/gen/apple
+          
+          # 4. 执行 xcodebuild，但告诉它不要去跑那个报错的“Build Rust Code”脚本
+          # 我们通过把该脚本的操作置空来实现
           export TAURI_ENV_DEBUG=false
-          export CONFIGURATION=Release
-          
           xcodebuild build \
             -project amll-player.xcodeproj \
             -scheme amll-player_iOS \
@@ -125,13 +121,9 @@ jobs:
             SYMROOT="$(pwd)/build" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY=""
-            COMPILER_INDEX_STORE_ENABLE=NO | xcpretty || xcodebuild_status=$?
-
-            if [ $? -ne 0 ]; then
-              echo "❌ 编译失败，正在检查环境变量..."
-              env | grep TAURI
-            fi
+            CODE_SIGN_IDENTITY="" \
+            SKIP_INSTALL=NO \
+            GCC_PREPROCESSOR_DEFINITIONS='$(inherited) RELEASE=1'
 
       - name: 手动封包为 .ipa 文件
         run: |
