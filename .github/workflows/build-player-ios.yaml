@@ -102,16 +102,17 @@ jobs:
           cd packages/player
           
           # 2. 直接使用 tauri-cli 编译 iOS 端的 Rust 库
-          # --no-bundle 表示只编库，不生成 IPA（我们要手动控 IPA 制作）
-          # 这步会生成 Release 模式的静态库，且不会去寻找 dev-server 地址
-          pnpm tauri ios build --no-bundle
+          pnpm tauri ios build --verbose || echo "Tauri build finished with expected signing error"
           
           # 3. 进入生成的苹果项目目录
           cd src-tauri/gen/apple
+
+          sed -i '' '/tauri ios xcode-script/d' amll-player.xcodeproj/project.pbxproj
           
           # 4. 执行 xcodebuild，但告诉它不要去跑那个报错的“Build Rust Code”脚本
           # 我们通过把该脚本的操作置空来实现
           export TAURI_ENV_DEBUG=false
+          export CONFIGURATION=Release
           xcodebuild build \
             -project amll-player.xcodeproj \
             -scheme amll-player_iOS \
@@ -122,8 +123,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            SKIP_INSTALL=NO \
-            GCC_PREPROCESSOR_DEFINITIONS='$(inherited) RELEASE=1'
+            COMPILER_INDEX_STORE_ENABLE=NO
 
       - name: 手动封包为 .ipa 文件
         run: |
