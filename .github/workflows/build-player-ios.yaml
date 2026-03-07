@@ -73,6 +73,13 @@ jobs:
             packages/player/src-tauri -> target
           key: ios-standalone-build
 
+      - name: 安装 wasm-pack
+        run: |
+          # 使用官方脚本快速安装
+          curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+          # 确认安装路径已加入环境
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
       - name: 构建前端 React 代码
         run: |
           pnpm i --frozen-lockfile --ignore-scripts
