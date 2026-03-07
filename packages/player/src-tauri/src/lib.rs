@@ -1,354 +1,152 @@
-use crate::server::AMLLWebSocketServer;
-use amll_player_core::AudioInfo;
-use anyhow::Context;
-use ffmpeg_next as ffmpeg;
-use serde::*;
-use serde_json::Value;
-use std::net::SocketAddr;
-use tauri::ipc::Channel;
-use tauri::{
-    AppHandle, Manager, PhysicalSize, Runtime, Size, State, WebviewWindowBuilder,
-};
-#[cfg(desktop)]
-use tauri::{utils::config::WindowEffectsConfig, window::Effect};
-use tokio::sync::RwLock;
-use tracing::*;
+use tauri::AppHandle;
 
-mod player;
-mod screen_capture;
-mod server;
+// 逻辑：只有在【非移动端】（即电脑端）才需要导入 Manager 来查找窗口
+#[cfg(not(mobile))]
+use tauri::Manager;
 
-pub type AMLLWebSocketServerWrapper = RwLock<AMLLWebSocketServer>;
-pub type AMLLWebSocketServerState<'r> = State<'r, AMLLWebSocketServerWrapper>;
-
-// Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
-#[tauri::command]
-async fn ws_reopen_connection(
-    addr: &str,
-    ws: AMLLWebSocketServerState<'_>,
-    channel: Channel<ws_protocol::v2::Payload>,
-) -> Result<(), String> {
-    ws.write().await.reopen(addr.to_string(), channel);
-    Ok(())
-}
+use anyhow_tauri::IntoTAResult;
 
 #[tauri::command]
-async fn ws_close_connection(ws: AMLLWebSocketServerState<'_>) -> Result<(), String> {
-    ws.write().await.close().await;
-    Ok(())
-}
+pub async fn take_screenshot(
+    // 逻辑：在变量名前加下划线 _，这样在 iOS 下即使没用到这些变量，编译器也不会报错
+    app: AppHandle,
+    _resize_window: bool,
+    _target_width: u32,
+    _target_height: u32,
+    _recover_size: bool,
+) -> anyhow_tauri::TAResult<String> {
 
-#[tauri::command]
-async fn ws_get_connections(ws: AMLLWebSocketServerState<'_>) -> Result<Vec<SocketAddr>, String> {
-    let server_guard = ws.read().await;
-    let connections = server_guard.get_connections().await;
-    Ok(connections)
-}
-
-#[tauri::command]
-async fn ws_broadcast_payload(
-    ws: AMLLWebSocketServerState<'_>,
-    payload: ws_protocol::v2::Payload,
-) -> Result<(), String> {
-    ws.write().await.broadcast_payload(payload).await;
-    Ok(())
-}
-
-#[tauri::command]
-fn restart_app<R: Runtime>(app: AppHandle<R>) {
-    tauri::process::restart(&app.env())
-}
-
-#[derive(Default, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct MusicInfo {
-    pub name: String,
-    pub artist: String,
-    pub album: String,
-    pub lyric_format: String,
-    pub lyric: String,
-    pub comment: String,
-    pub cover: Vec<u8>,
-    pub duration: f64,
-}
-
-impl From<AudioInfo> for MusicInfo {
-    fn from(v: AudioInfo) -> Self {
-        Self {
-            name: v.name,
-            artist: v.artist,
-            album: v.album,
-            lyric_format: if v.lyric.is_empty() {
-                "".into()
-            } else {
-                "lrc".into()
-            },
-            lyric: v.lyric,
-            comment: v.comment,
-            cover: v.cover.unwrap_or_default(),
-            duration: v.duration,
-        }
-    }
-}
-
-#[tauri::command]
-async fn read_local_music_metadata(
-    file_path: tauri_plugin_fs::FilePath,
-    fs: State<'_, tauri_plugin_fs::Fs<tauri::Wry>>,
-) -> Result<MusicInfo, String> {
-    let path_clone = file_path
-        .as_path()
-        .context("Invalid file path")
-        .map_err(|e| e.to_string())?
-        .to_path_buf();
-
-    let audio_info = tokio::task::spawn_blocking(move || -> anyhow::Result<AudioInfo> {
-        let mut input_ctx = ffmpeg::format::input(&path_clone)
-            .with_context(|| format!("无法打开文件: {}", path_clone.display()))?;
-        let mut info = amll_player_core::utils::read_audio_info(&mut input_ctx);
-        if let Some(stream) = input_ctx.streams().best(ffmpeg::media::Type::Audio) {
-            let time_base = stream.time_base();
-            let duration = stream.duration();
-            info.duration = duration as f64 * time_base.0 as f64 / time_base.1 as f64;
-        }
-        Ok(info)
-    })
-    .await
-    .map_err(|e| e.to_string())?
-    .map_err(|e| e.to_string())?;
-
-    let mut music_info: MusicInfo = audio_info.into();
-
-    if let Some(file_path_ref) = file_path.as_path()
-        && music_info.lyric.is_empty()
-    {
-        const LYRIC_FILE_EXTENSIONS: &[&str] = &["ttml", "lys", "yrc", "qrc", "eslrc", "lrc"];
-        for ext in LYRIC_FILE_EXTENSIONS {
-            let lyric_file_path = file_path_ref.with_extension(ext);
-            if lyric_file_path.exists() {
-                if let Ok(lyric) = fs.read_to_string(&lyric_file_path) {
-                    music_info.lyric_format = ext.to_string();
-                    music_info.lyric = lyric;
-                    break;
-                } else {
-                    warn!("歌词文件存在但读取失败: {}", lyric_file_path.display());
-                }
-            }
-        }
-    }
-
-    Ok(music_info)
-}
-
-async fn create_common_win<'a>(
-    app: &'a AppHandle,
-    url: tauri::WebviewUrl,
-    label: &str,
-) -> tauri::WebviewWindowBuilder<'a, tauri::Wry, AppHandle> {
-    let mut win = WebviewWindowBuilder::new(app, label, url);
-    #[cfg(target_os = "windows")]
-    let win = win.transparent(true);
-
-    #[cfg(desktop)]
-    {
-      win = win
-        .center()
-        .inner_size(800.0, 600.0)
-        .effects(WindowEffectsConfig {
-            effects: vec![Effect::Tabbed, Effect::Mica],
-            ..Default::default()
-        })
-        .theme(None)
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-      win = win.title_bar_style(tauri::TitleBarStyle::Overlay);
-    }
-
-        .title({
-            #[cfg(target_os = "macos")]
-            {
-                ""
-            }
-            #[cfg(not(target_os = "macos"))]
-            {
-                "AMLL Player"
-            }
-        })
-        .visible({
-            #[cfg(target_os = "macos")]
-            {
-                true
-            }
-            #[cfg(not(target_os = "macos"))]
-            {
-                false
-            }
-        })
-        .decorations({
-            #[cfg(target_os = "macos")]
-            {
-                true
-            }
-            #[cfg(not(target_os = "macos"))]
-            {
-                false
-            }
-        });
-
-    win
-}
-
-async fn recreate_window(app: &AppHandle, label: &str, path: Option<&str>) {
-    info!("Recreating window: {}", label);
-    if let Some(win) = app.get_webview_window(label) {
-        #[cfg(desktop)]
-        {
-            let _ = win.show();
-            let _ = win.set_focus();
-        }
-        return;
-    }
-    #[cfg(debug_assertions)]
-    let url = {
-        tauri::WebviewUrl::External(
-            app.config()
-                .build
-                .dev_url
-                .clone()
-                .unwrap()
-                .join(path.unwrap_or(""))
-                .expect("Failed to create external URL"),
-        )
-    };
-    #[cfg(not(debug_assertions))]
-    let url = tauri::WebviewUrl::App(path.unwrap_or("index.html").into());
-    let win = create_common_win(app, url, label).await;
-
-    let win = win.build().expect("can't show original window");
-
-    #[cfg(desktop)]
-    {
-        let _ = win.set_focus();
-        if let Ok(orig_size) = win.inner_size() {
-            let _ = win.set_size(Size::Physical(PhysicalSize::new(0, 0)));
-            let _ = win.set_size(orig_size);
-        }
-    }
-
-    info!("Created window: {}", label);
-}
-
-#[tauri::command]
-async fn open_screenshot_window(app: AppHandle) {
-    recreate_window(&app, "screenshot", Some("screenshot.html")).await;
-}
-
-fn init_logging() {
-    #[cfg(not(debug_assertions))]
-    {
-        let log_file = std::fs::File::create("amll-player.log");
-        if let Ok(log_file) = log_file {
-            tracing_subscriber::fmt()
-                .map_writer(move |_| log_file)
-                .with_thread_names(true)
-                .with_ansi(false)
-                .with_timer(tracing_subscriber::fmt::time::uptime())
-                .init();
-        } else {
-            tracing_subscriber::fmt()
-                .with_thread_names(true)
-                .with_timer(tracing_subscriber::fmt::time::uptime())
-                .init();
-        }
-    }
-    #[cfg(debug_assertions)]
-    {
-        tracing_subscriber::fmt()
-            .with_env_filter("amll_player=trace,wry=info")
-            .with_thread_names(true)
-            .with_timer(tracing_subscriber::fmt::time::uptime())
-            .init();
-    }
-    std::panic::set_hook(Box::new(move |info| {
-        error!("Fatal error occurred! AMLL Player will exit now.");
-        error!("Error: {info}");
-        error!("{info:#?}");
-    }));
-}
-
-#[cfg_attr(mobile, tauri::mobile_entry_point)]
-pub fn run() {
-    init_logging();
-    info!("AMLL Player is starting!");
-    #[allow(unused_mut)]
-    let mut context = tauri::generate_context!();
-
-    let builder = tauri::Builder::default().plugin(tauri_plugin_opener::init());
-
-    #[cfg(not(mobile))]
-    let pubkey = {
-        if let Some(Value::Object(updater_config)) = context.config().plugins.0.get("updater") {
-            if let Some(Value::String(pubkey)) = updater_config.get("pubkey") {
-                pubkey.clone()
-            } else {
-                "".into()
-            }
-        } else {
-            "".into()
-        }
-    };
-    #[cfg(not(mobile))]
-    let builder = builder.plugin(tauri_plugin_updater::Builder::new().pubkey(pubkey).build());
-
+    // ==========================================
+    // 1. 移动端逻辑 (iOS / Android)
+    // ==========================================
     #[cfg(mobile)]
     {
-        context
-            .config_mut()
-            .app
-            .windows
-            .push(tauri::utils::config::WindowConfig {
-                ..Default::default()
-            })
+        // 直接返回不支持，不执行任何后续复杂的窗口操作
+        anyhow_tauri::bail!("移动端暂不支持屏幕截图功能");
     }
 
-    ffmpeg::init().expect("初始化 ffmpeg 失败");
+    // ==========================================
+    // 2. 桌面端逻辑 (Windows / macOS / Linux)
+    // ==========================================
+    #[cfg(not(mobile))]
+    {
+        // 将下划线变量重新赋值给正常变量，方便在桌面端逻辑中使用
+        let resize_window = _resize_window;
+        let target_width = _target_width;
+        let target_height = _target_height;
+        let recover_size = _recover_size;
 
-    builder
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_os::init())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_http::init())
-        .invoke_handler(tauri::generate_handler![
-            ws_reopen_connection,
-            ws_get_connections,
-            ws_broadcast_payload,
-            ws_close_connection,
-            open_screenshot_window,
-            screen_capture::take_screenshot,
-            player::local_player_send_msg,
-            player::set_media_controls_enabled,
-            read_local_music_metadata,
-            restart_app,
-        ])
-        .setup(|app| {
-            player::init_local_player(app.handle().clone());
+        let win = app.get_webview_window("main");
 
-            #[cfg(desktop)]
-            let _ = app
-                .handle()
-                .plugin(tauri_plugin_global_shortcut::Builder::new().build());
-            app.manage::<AMLLWebSocketServerWrapper>(RwLock::new(AMLLWebSocketServer::new(
-                app.handle().clone(),
-            )));
-            #[cfg(not(mobile))]
+        let win = if let Some(win) = win {
+            win
+        } else {
+            anyhow_tauri::bail!("找不到主窗口")
+        };
+
+        let orig_size = win.inner_size().into_ta_result()?;
+
+        if resize_window {
+            win.set_size(tauri::Size::Physical(tauri::PhysicalSize::new(
+                target_width,
+                target_height,
+            )))
+            .into_ta_result()?;
+            win.set_resizable(false).into_ta_result()?;
+        }
+
+        let result: anyhow::Result<String> = {
+            // --- Windows 专属：通过 DevTools 协议截图 ---
+            #[cfg(target_os = "windows")]
             {
-                tauri::async_runtime::block_on(recreate_window(app.handle(), "main", None));
+                let win = win.clone();
+                #[derive(serde::Deserialize, Debug)]
+                struct ScreenshotResult {
+                    data: String,
+                }
+
+                struct DevToolsRunner(tauri::WebviewWindow<tauri::Wry>);
+
+                impl DevToolsRunner {
+                    async fn run(
+                        &self,
+                        name: &'static str,
+                        json_data: serde_json::Value,
+                    ) -> anyhow::Result<String> {
+                        use anyhow::Context;
+                        use webview2_com::CallDevToolsProtocolMethodCompletedHandler;
+                        let (os_sx, os_rx) = tokio::sync::oneshot::channel();
+
+                        let json_data = serde_json::to_string(&json_data)
+                            .expect("序列化 JSON 失败");
+
+                        self.0
+                            .with_webview(move |webview| {
+                                let ctl = webview.controller();
+                                unsafe {
+                                    let core_wv = ctl.CoreWebView2().unwrap();
+                                    let name = webview2_com::pwstr_from_str(name);
+                                    let json_data = webview2_com::pwstr_from_str(&json_data);
+                                    let handler =
+                                        CallDevToolsProtocolMethodCompletedHandler::create(
+                                            Box::new(move |a, b| {
+                                                let _ = os_sx.send((a, b));
+                                                Ok(())
+                                            }),
+                                        );
+
+                                    core_wv
+                                        .CallDevToolsProtocolMethod(name, json_data, Some(&handler))
+                                        .unwrap();
+                                }
+                            })
+                            .unwrap();
+
+                        let result = os_rx.await.unwrap();
+                        result
+                            .0
+                            .map(|_| result.1)
+                            .context("调用 DevTools 协议失败")
+                    }
+
+                    async fn take_screenshot(&self) -> anyhow::Result<String> {
+                        let json_data = serde_json::json!({
+                            "format": "png",
+                            "optimizeForSpeed": true,
+                        });
+                        let res = self.run("Page.captureScreenshot", json_data).await?;
+                        let res = serde_json::from_str::<ScreenshotResult>(&res)?;
+                        Ok(res.data)
+                    }
+                }
+
+                let dev_tools_runner = DevToolsRunner(win);
+
+                if resize_window {
+                    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                }
+                dev_tools_runner.take_screenshot().await
             }
-            Ok(())
-        })
-        .run(context)
-        .expect("error while running tauri application");
+
+            // --- 非 Windows 桌面端 (macOS/Linux) ---
+            #[cfg(not(target_os = "windows"))]
+            {
+                anyhow_tauri::bail!(
+                    "此平台暂不支持通过 DevTools 截图。"
+                )
+            }
+        };
+
+        let result = result.into_ta_result()?;
+
+        // 恢复窗口大小的逻辑
+        if resize_window {
+            if recover_size {
+                let _ = win.set_size(tauri::Size::Physical(orig_size));
+            }
+            let _ = win.set_resizable(true);
+        }
+
+        Ok(result)
+    }
 }
