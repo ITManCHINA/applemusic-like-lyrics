@@ -8,8 +8,9 @@ use std::net::SocketAddr;
 use tauri::ipc::Channel;
 use tauri::{
     AppHandle, Manager, PhysicalSize, Runtime, Size, State, WebviewWindowBuilder,
-    utils::config::WindowEffectsConfig, window::Effect,
 };
+#[cfg(desktop)]
+use tauri::{utils::config::WindowEffectsConfig, window::Effect};
 use tokio::sync::RwLock;
 use tracing::*;
 
@@ -144,14 +145,13 @@ async fn create_common_win<'a>(
     url: tauri::WebviewUrl,
     label: &str,
 ) -> tauri::WebviewWindowBuilder<'a, tauri::Wry, AppHandle> {
-    let win = WebviewWindowBuilder::new(app, label, url);
+    let mut win = WebviewWindowBuilder::new(app, label, url);
     #[cfg(target_os = "windows")]
     let win = win.transparent(true);
-    #[cfg(not(desktop))]
-    let win = win;
 
     #[cfg(desktop)]
-    let win = win
+    {
+      win = win
         .center()
         .inner_size(800.0, 600.0)
         .effects(WindowEffectsConfig {
@@ -159,6 +159,13 @@ async fn create_common_win<'a>(
             ..Default::default()
         })
         .theme(None)
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+      win = win.title_bar_style(tauri::TitleBarStyle::Overlay);
+    }
+
         .title({
             #[cfg(target_os = "macos")]
             {
@@ -189,9 +196,6 @@ async fn create_common_win<'a>(
                 false
             }
         });
-
-    #[cfg(target_os = "macos")]
-    let win = win.title_bar_style(tauri::TitleBarStyle::Overlay);
 
     win
 }

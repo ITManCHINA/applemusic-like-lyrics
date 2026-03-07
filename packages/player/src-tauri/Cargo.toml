@@ -36,7 +36,14 @@ tokio-tungstenite = "0.28"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-tauri = { version = "2", features = ["devtools"] }
+# 关闭默认特性 (default-features = false)，只保留开发工具和自定义协议
+tauri = { version = "2", default-features = false, features = ["devtools", "custom-protocol"] }
+
+# 只有在不是安卓、iOS 的情况下才开启
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri = { version = "2", features = ["protocol-asset", "tray-icon"] }
+tauri-plugin-global-shortcut = { version = "2" }
+tauri-plugin-updater = { version = "2" }
 tauri-plugin-dialog = { version = "2" }
 tauri-plugin-fs = { version = "2" }
 tauri-plugin-opener = { version = "2" }
