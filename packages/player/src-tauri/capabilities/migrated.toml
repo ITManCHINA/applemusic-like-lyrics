@@ -41,8 +41,6 @@ identifier = "core:window:allow-show"
 [[permissions]]
 identifier = "core:window:allow-set-theme"
 [[permissions]]
-identifier = "shell:default"
-[[permissions]]
 identifier = "fs:default"
 [[permissions]]
 identifier = "fs:allow-write"
