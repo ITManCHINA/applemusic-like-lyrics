@@ -5,25 +5,30 @@ use anyhow_tauri::IntoTAResult;
 
 #[tauri::command]
 pub async fn take_screenshot(
-    app: AppHandle,
-    resize_window: bool,
-    target_width: u32,
-    target_height: u32,
-    recover_size: bool,
+    _app: AppHandle,
+    _resize_window: bool,
+    _target_width: u32,
+    _target_height: u32,
+    _recover_size: bool,
 ) -> anyhow_tauri::TAResult<String> {
+
     #[cfg(mobile)]
     {
-        anyhow_tauri::bail!("Screenshot capture is not supported on Android");
+        anyhow_tauri::bail!("移动端暂不支持屏幕截图功能");
     }
+
     #[cfg(not(mobile))]
     {
+        // 在桌面端，我们将变量重新映射回来使用
+        let app = _app;
+        let resize_window = _resize_window;
+        let target_width = _target_width;
+        let target_height = _target_height;
+        let recover_size = _recover_size;
+
         let win = app.get_webview_window("main");
 
-        let win = if let Some(win) = win {
-            win
-        } else {
-            anyhow_tauri::bail!("Main window not found")
-        };
+        let win = if let Some(win) = win { win } else { anyhow_tauri::bail!("找不到主窗口") };
 
         let orig_size = win.inner_size().into_ta_result()?;
         if resize_window {
@@ -150,6 +155,6 @@ pub async fn take_screenshot(
             win.set_resizable(true).into_ta_result()?;
         }
 
-        Ok(result)
+        Ok("".to_string())
     }
 }
