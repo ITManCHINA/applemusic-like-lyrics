@@ -96,17 +96,31 @@ jobs:
           # 仅生成 src-tauri/gen/apple 下的 Xcode 项目文件
           pnpm -F player tauri ios init
 
-      - name: 强制无签名编译 (xcodebuild)
+      - name: 自动定位并编译 iOS 产物
         run: |
-          cd packages/player/src-tauri/gen/apple
+          # 1. 自动寻找 Runner.xcworkspace 的位置
+          # 这样即便 Tauri 改变了存放路径，脚本也能自动找到
+          WORKSPACE_PATH=$(find . -name "Runner.xcworkspace" -type d | head -n 1)
           
+          if [ -z "$WORKSPACE_PATH" ]; then
+            echo "❌ 错误：没找到 Runner.xcworkspace，请检查 tauri ios init 是否成功。"
+            ls -R packages/player/src-tauri/gen/apple  # 打印目录结构方便排查
+            exit 1
+          fi
+
+          # 获取该文件所在的文件夹路径
+          PROJECT_DIR=$(dirname "$WORKSPACE_PATH")
+          echo "✅ 找到项目目录: $PROJECT_DIR"
+          cd "$PROJECT_DIR"
+          
+          # 2. 执行编译
           xcodebuild build \
             -workspace Runner.xcworkspace \
             -scheme Runner \
             -configuration Release \
             -sdk iphoneos \
             -arch arm64 \
-            SYMROOT="$(PWD)/build" \
+            SYMROOT="$(pwd)/build" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY=""
