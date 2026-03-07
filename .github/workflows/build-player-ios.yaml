@@ -43,7 +43,7 @@ jobs:
       - name: 下载并设置预编译的 FFmpeg 库 (iOS)
         shell: bash
         env:
-          BUILDER_REPO: apoint123/ffmpeg-builder
+          BUILDER_REPO: ITManCHINA/ffmpeg-builder
           FFMPEG_VERSION_TAG: "7.1"
         run: |
           PACKAGE_NAME="ffmpeg-${FFMPEG_VERSION_TAG}-ios-arm64.tar.gz"
