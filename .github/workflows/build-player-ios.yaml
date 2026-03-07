@@ -1,0 +1,122 @@
+name: 构建 AMLL Player iOS 版本 (无签名)
+
+on:
+  push:
+    branches:
+      - build-ios-test
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# 防止同一个分支有多个构建任务同时跑，浪费资源
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-tauri-ios:
+    name: 构建 iOS 产物
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+        name: 克隆仓库
+        with:
+          fetch-depth: 0
+
+      - name: 安装 PNPM
+        uses: pnpm/action-setup@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          targets: "aarch64-apple-ios"
+
+      - name: 下载并设置预编译的 FFmpeg 库 (iOS)
+        shell: bash
+        env:
+          BUILDER_REPO: apoint123/ffmpeg-builder
+          FFMPEG_VERSION_TAG: "7.1"
+        run: |
+          PACKAGE_NAME="ffmpeg-${FFMPEG_VERSION_TAG}-ios-arm64.tar.gz"
+          DOWNLOAD_URL="https://github.com/${BUILDER_REPO}/releases/latest/download/${PACKAGE_NAME}"
+          EXTRACT_DIR="${{ github.workspace }}/vendor/ffmpeg_ios"
+
+          echo "正在从 $DOWNLOAD_URL 下载 iOS FFmpeg..."
+          curl -f -sL $DOWNLOAD_URL -o $PACKAGE_NAME
+
+          mkdir -p $EXTRACT_DIR
+          tar -xzf $PACKAGE_NAME -C $EXTRACT_DIR
+          rm $PACKAGE_NAME
+
+          # 设置环境变量，让 Rust 编译时能链接到这些库
+          echo "FFMPEG_DIR=$EXTRACT_DIR" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$EXTRACT_DIR/lib/pkgconfig" >> $GITHUB_ENV
+          
+          # 告诉编译工具去哪里找 iOS 系统原生的 API
+          SDK_PATH=$(xcrun --show-sdk-path --sdk iphoneos)
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-isysroot $SDK_PATH" >> $GITHUB_ENV
+
+      - name: 配置 Rust 缓存
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            packages/player/src-tauri -> target
+          key: ios-standalone-build
+
+      - name: 构建前端 React 代码
+        run: |
+          pnpm i --frozen-lockfile --ignore-scripts
+          pnpm nx build player
+        env:
+          AMLL_GITHUB_IS_ACTION: true
+
+      - name: 生成开发构建版本号
+        run: |
+          node ./packages/player/scripts/gen-dev-version.mjs
+
+      - name: 初始化 Tauri iOS 原生项目
+        run: |
+          # 仅生成 src-tauri/gen/apple 下的 Xcode 项目文件
+          pnpm -F player tauri ios init
+
+      - name: 强制无签名编译 (xcodebuild)
+        run: |
+          cd packages/player/src-tauri/gen/apple
+          
+          xcodebuild build \
+            -workspace Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -arch arm64 \
+            SYMROOT="$(PWD)/build" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
+
+      - name: 手动封包为 .ipa 文件
+        run: |
+          cd packages/player/src-tauri/gen/apple
+          
+          # 创建苹果要求的 Payload 结构并压缩
+          mkdir -p Payload
+          cp -r build/Release-iphoneos/Runner.app Payload/
+          zip -vr AMLL-Player-iOS-Unsigned.ipa Payload
+          
+          echo "IPA 文件生成成功。"
+
+      - name: 上传 IPA 到 Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: AMLL-Player-iOS-Unsigned-IPA
+          path: packages/player/src-tauri/gen/apple/AMLL-Player-iOS-Unsigned.ipa
