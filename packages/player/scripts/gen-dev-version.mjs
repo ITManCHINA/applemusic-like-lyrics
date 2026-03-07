@@ -1,38 +1,23 @@
-// 按照原版本号 + -dev. + 开发分支名 + . + git提交次数 生成开发版本号
-// 最后写入到 ./src-tauri/tauri.conf.json 中
-// git rev-list --count HEAD
-
-import { execSync } from "node:child_process";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
-import { exit } from "node:process";
 import { fileURLToPath } from "node:url";
 
 const tauriConfPath = resolve(
-	dirname(fileURLToPath(import.meta.url)),
-	"../src-tauri/tauri.conf.json",
+  dirname(fileURLToPath(import.meta.url)),
+  "../src-tauri/tauri.conf.json",
 );
-
-console.log("Reading tauri.conf.json from", tauriConfPath);
 
 const tauriConf = JSON.parse(readFileSync(tauriConfPath, "utf-8"));
 
-console.log("tauri.conf.json content:", tauriConf);
-
-const baseVersion = tauriConf.version;
-
-if (!/^[0-9]+\.[0-9]+\.[0-9]+$/.test(baseVersion)) {
-	console.error(`Invalid base version: ${baseVersion}`);
-	exit(1);
+// 核心逻辑：只确保版本号是 0.0.1 这种干净的格式
+// 删掉所有可能导致冲突的移动端配置
+tauriConf.version = "0.0.1";
+delete tauriConf.ios;
+delete tauriConf.android;
+if (tauriConf.bundle) {
+  delete tauriConf.bundle.ios;
+  delete tauriConf.bundle.android;
 }
 
-// const branch = execSync('git rev-parse --abbrev-ref HEAD').toString().trim();
-const commitCount = execSync("git rev-list --count HEAD").toString().trim();
-
-const devVersion = `${baseVersion}+${commitCount}`;
-
-tauriConf.version = devVersion;
-
-console.log(`Generated dev version: ${baseVersion} -> ${devVersion}`);
-
-writeFileSync(tauriConfPath, JSON.stringify(tauriConf, null, "\t"));
+writeFileSync(tauriConfPath, JSON.stringify(tauriConf, null, 2));
+console.log("✅ 已清理 tauri.conf.json 中的非法配置字段");
