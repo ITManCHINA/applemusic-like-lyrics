@@ -82,6 +82,7 @@ const GitMetadataPlugin = (): Plugin => {
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  base: './',
 	build: {
 		target:
 			process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : "safari15",

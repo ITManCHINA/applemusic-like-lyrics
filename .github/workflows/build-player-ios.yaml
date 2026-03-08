@@ -100,36 +100,31 @@ jobs:
         run: |
           cd packages/player
           
-          export SDKROOT=$(xcrun --sdk iphoneos --show-sdk-path)
-          export CFLAGS="-isysroot $SDKROOT"
+          # 1. 确保环境变量正确（如果是 Debug 构建）
+          export TAURI_ENV_DEBUG=true
           
-          # 1. 编译 Rust 库 (强制使用 debug 模式以匹配你后面的 xcodebuild)
+          # 2. 编译 Rust 库
           cargo build --target aarch64-apple-ios --manifest-path src-tauri/Cargo.toml
           
-          # 2. 进入苹果项目目录
+          # 3. 进入项目生成的 Apple 目录
           cd src-tauri/gen/apple
           
-          # 3. 【关键修复】寻找你的真实库文件并重命名为 libapp.a
-          echo "正在定位 Rust 静态库..."
-          # 查找 libamll_player_lib.a (根据你之前的日志)
+          # ---【核心修复：资源注入】---
+          # 4. 创建 Xcode 资源存放目录（Tauri 默认会看这个位置）
+          # 我们把 Vite 的 dist 内容直接软链接到这里，让 Xcode 以为它们是原生资源
+          mkdir -p .tauri-resources
+          cp -r ../../../dist/* .tauri-resources/
+          
+          # 5. 同时为了双重保险，把库重命名并放进 build 目录
+          # 这里使用你之前定位成功的逻辑
           REAL_LIB=$(find ../../target/aarch64-apple-ios -name "libamll_player_lib.a" -type f | head -n 1)
-          
-          if [ -z "$REAL_LIB" ]; then
-            echo "❌ 错误：未找到 libamll_player_lib.a"
-            find ../../target -name "*.a"
-            exit 1
-          fi
-          
-          echo "✅ 找到库文件: $REAL_LIB，正在分发并重命名..."
-          
-          # 创建 Xcode 预期的构建目录，并强制命名为 libapp.a
           mkdir -p build/debug-iphoneos
           cp "$REAL_LIB" build/debug-iphoneos/libapp.a
           
-          # 4. 移除 Tauri 冲突脚本
+          # 6. 移除干扰脚本
           sed -i '' '/tauri ios xcode-script/d' amll-player.xcodeproj/project.pbxproj
           
-          # 5. 执行 Xcode 编译
+          # 7. 运行编译
           xcodebuild build \
             -project amll-player.xcodeproj \
             -scheme amll-player_iOS \
