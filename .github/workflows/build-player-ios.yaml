@@ -1,0 +1,131 @@
+name: 构建 AMLL Player iOS 移动版本
+on:
+  push:
+    branches:
+      - build-ios-test-new
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  clean-pre-release:
+    name: 删除预发布版本的构建产物
+    runs-on: ubuntu-latest
+    steps:
+      - name: 删除预发布版本的构建产物
+        uses: mknejp/delete-release-assets@v1
+        with:
+          token: ${{ github.token }}
+          assets: |
+            *.*
+          tag: ${{ github.ref_name }}-player-dev
+          fail-if-no-assets: false
+          fail-if-no-release: false
+
+  build-tauri-ios:
+    name: 构建 Tauri iOS 移动版本
+    needs: clean-pre-release
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+        name: 克隆仓库
+        with:
+          fetch-depth: 0 # 为了正确生成开发版本号码
+
+      - name: 安装 PNPM
+        uses: pnpm/action-setup@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: pnpm
+
+      - name: 选择 Xcode 版本
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+
+      # macOS 自带的 Xcode LLVM 不支持 WASM 目标
+      - name: "macOS: 安装 LLVM 和 Clang"
+        uses: KyleMayes/install-llvm-action@v2
+        with:
+          version: "20"
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          targets: aarch64-apple-ios-sim,wasm32-unknown-unknown
+
+      - name: 安装 wasm-pack
+        uses: jetli/wasm-pack-action@v0.4.0
+        with:
+          version: "v0.13.1"
+
+      - name: 配置 Rust 缓存
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            . -> target
+            packages/player/src-tauri -> target
+          key: ios
+
+      - name: "macOS: 设置环境变量"
+        run: |
+          SDK_PATH=$(xcrun --show-sdk-path)
+          echo "SDK Path: $SDK_PATH"
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-isysroot $SDK_PATH" >> $GITHUB_ENV
+        shell: bash
+
+      - name: 下载预编译的 FFmpeg 库 (iOS)
+        shell: bash
+        env:
+          BUILDER_REPO: ITManCHINA/ffmpeg-builder
+          FFMPEG_VERSION_TAG: "7.1"
+        run: |
+          PACKAGE_NAME="ffmpeg-7.1-ios-arm64.tar.gz"
+          DOWNLOAD_URL="https://github.com/${{ env.BUILDER_REPO }}/releases/latest/download/${PACKAGE_NAME}"
+          echo "Downloading $PACKAGE_NAME from $DOWNLOAD_URL ..."
+          curl -f -sL $DOWNLOAD_URL -o $PACKAGE_NAME
+
+          mkdir -p vendor/ffmpeg_ios
+          echo "Extracting $PACKAGE_NAME ..."
+          tar -xzf $PACKAGE_NAME -C vendor/ffmpeg_ios
+          rm $PACKAGE_NAME
+
+          echo "FFmpeg library for iOS extracted to vendor/ffmpeg_ios"
+          ls -lR vendor/ffmpeg_ios
+
+          echo "FFMPEG_DIR_AARCH64_APPLE_IOS_SIM=${{ github.workspace }}/vendor/ffmpeg_ios" >> $GITHUB_ENV
+
+      - name: 构建 AMLL Full React 包
+        run: |
+          pnpm i --frozen-lockfile --ignore-scripts
+          pnpm nx build player
+        env:
+          AMLL_GITHUB_IS_ACTION: true
+
+      - name: 生成开发构建版本号
+        run: |
+          node ./packages/player/scripts/gen-dev-version.mjs
+
+      - name: 构建 AMLL Player iOS 移动版程序
+        run: |
+          pnpm -F player tauri ios build
+
+      - name: 打包为未签名的 .ipa 文件
+        run: |
+          mkdir -p Payload
+          mv packages/player/src-tauri/gen/apple/ios/release/*.app Payload/
+          zip -r unsigned.ipa Payload/
+
+      - name: 上传产物到 Action Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AMLL Player iOS (Unsigned)
+          path: unsigned.ipa
