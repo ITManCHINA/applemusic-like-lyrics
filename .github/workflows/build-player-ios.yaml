@@ -75,7 +75,7 @@ jobs:
 
       - name: "macOS: 设置环境变量"
         run: |
-          SDK_PATH=$(xcrun --show-sdk-path)
+          SDK_PATH=$(xcrun --sdk iphonesimulator --show-sdk-path)
           echo "SDK Path: $SDK_PATH"
           echo "BINDGEN_EXTRA_CLANG_ARGS=-isysroot $SDK_PATH" >> $GITHUB_ENV
         shell: bash
