@@ -118,6 +118,7 @@ jobs:
 
       - name: 手动构建未签名的 iOS 应用
         run: |
+          unset DYLD_LIBRARY_PATH
           cd packages/player/src-tauri
           cargo build --release --target aarch64-apple-ios-sim
           cd gen/apple
