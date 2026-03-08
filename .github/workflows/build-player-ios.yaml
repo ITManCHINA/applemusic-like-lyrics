@@ -73,53 +73,11 @@ jobs:
             packages/player/src-tauri -> target
           key: ios
 
-      - name: "macOS: 设置环境变量"
-        run: |
-          SDK_PATH=$(xcrun --sdk iphonesimulator --show-sdk-path)
-          echo "SDK Path: $SDK_PATH"
-          echo "BINDGEN_EXTRA_CLANG_ARGS=-isysroot $SDK_PATH" >> $GITHUB_ENV
-          echo "SDKROOT=$SDK_PATH" >> $GITHUB_ENV
-        shell: bash
-
-      - name: 下载预编译的 FFmpeg 库 (iOS)
-        shell: bash
-        env:
-          BUILDER_REPO: ITManCHINA/ffmpeg-builder
-          FFMPEG_VERSION_TAG: "7.1"
-        run: |
-          PACKAGE_NAME="ffmpeg-7.1-ios-arm64.tar.gz"
-          DOWNLOAD_URL="https://github.com/${{ env.BUILDER_REPO }}/releases/latest/download/${PACKAGE_NAME}"
-          echo "Downloading $PACKAGE_NAME from $DOWNLOAD_URL ..."
-          curl -f -sL $DOWNLOAD_URL -o $PACKAGE_NAME
-
-          mkdir -p vendor/ffmpeg_ios
-          echo "Extracting $PACKAGE_NAME ..."
-          tar -xzf $PACKAGE_NAME -C vendor/ffmpeg_ios
-          rm $PACKAGE_NAME
-
-          echo "FFmpeg library for iOS extracted to vendor/ffmpeg_ios"
-          ls -lR vendor/ffmpeg_ios
-
-          echo "FFMPEG_DIR_AARCH64_APPLE_IOS_SIM=${{ github.workspace }}/vendor/ffmpeg_ios" >> $GITHUB_ENV
-
-      - name: 构建 AMLL Full React 包
-        run: |
-          pnpm i --frozen-lockfile --ignore-scripts
-          pnpm nx build player
-        env:
-          AMLL_GITHUB_IS_ACTION: true
-
-      - name: 固定版本号为 0.1.0
-        run: |
-          sed -i '' 's/\("version":\s*"\)[^\"]*/\10.1.0/' packages/player/src-tauri/tauri.conf.json
-
-      - name: 初始化 Tauri iOS 项目
-        run: |
-          pnpm -F player tauri ios init
-
       - name: 手动构建未签名的 iOS 应用
         run: |
           unset DYLD_LIBRARY_PATH
+          export SDKROOT=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          export BINDGEN_EXTRA_CLANG_ARGS="-isysroot $SDKROOT"
           cd packages/player/src-tauri
           cargo build --release --target aarch64-apple-ios-sim
           cd gen/apple
