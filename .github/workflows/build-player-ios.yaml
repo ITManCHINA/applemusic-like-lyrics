@@ -108,9 +108,9 @@ jobs:
         env:
           AMLL_GITHUB_IS_ACTION: true
 
-      - name: 生成开发构建版本号
+      - name: 固定版本号为 0.1.0
         run: |
-          node ./packages/player/scripts/gen-dev-version.mjs
+          sed -i '' 's/("version":\s*").*(")/\10.1.0\2/' packages/player/src-tauri/tauri.conf.json
 
       - name: 构建 AMLL Player iOS 移动版程序
         run: |
