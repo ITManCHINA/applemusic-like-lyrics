@@ -103,35 +103,33 @@ jobs:
           export SDKROOT=$(xcrun --sdk iphoneos --show-sdk-path)
           export CFLAGS="-isysroot $SDKROOT"
           
-          # 1. 使用 Tauri 官方推荐的构建方式（会自动处理环境变量）
-          # 我们先尝试不加 --no-bundle，如果报错则改用 cargo build
-          pnpm tauri ios build --debug || \
+          # 1. 编译 Rust 库 (强制使用 debug 模式以匹配你后面的 xcodebuild)
           cargo build --target aarch64-apple-ios --manifest-path src-tauri/Cargo.toml
-
+          
           # 2. 进入苹果项目目录
           cd src-tauri/gen/apple
           
-          # 3. 【优化核心】智能寻找并搬运 libapp.a
-          # 无论是在 target/aarch64-apple-ios/debug 还是 release，直接通通搜出来
+          # 3. 【关键修复】寻找你的真实库文件并重命名为 libapp.a
           echo "正在定位 Rust 静态库..."
-          LIB_PATH=$(find ../../target/aarch64-apple-ios -name "libapp.a" -type f | head -n 1)
+          # 查找 libamll_player_lib.a (根据你之前的日志)
+          REAL_LIB=$(find ../../target/aarch64-apple-ios -name "libamll_player_lib.a" -type f | head -n 1)
           
-          if [ -z "$LIB_PATH" ]; then
-            echo "❌ 错误：在 target 目录下未找到 libapp.a"
-            find ../../target -name "*.a" # 打印所有静态库方便调试
+          if [ -z "$REAL_LIB" ]; then
+            echo "❌ 错误：未找到 libamll_player_lib.a"
+            find ../../target -name "*.a"
             exit 1
           fi
           
-          echo "✅ 找到静态库: $LIB_PATH"
+          echo "✅ 找到库文件: $REAL_LIB，正在分发并重命名..."
           
-          # 创建 Xcode 预期的构建目录并拷贝
+          # 创建 Xcode 预期的构建目录，并强制命名为 libapp.a
           mkdir -p build/debug-iphoneos
-          cp "$LIB_PATH" build/debug-iphoneos/libapp.a
+          cp "$REAL_LIB" build/debug-iphoneos/libapp.a
           
-          # 4. 【黑科技】移除报错脚本，防止 Xcode 乱跑
+          # 4. 移除 Tauri 冲突脚本
           sed -i '' '/tauri ios xcode-script/d' amll-player.xcodeproj/project.pbxproj
           
-          # 5. 执行最终链接编译
+          # 5. 执行 Xcode 编译
           xcodebuild build \
             -project amll-player.xcodeproj \
             -scheme amll-player_iOS \
@@ -148,7 +146,8 @@ jobs:
         run: |
           cd packages/player/src-tauri/gen/apple
           
-          APP_PATH=$(find build/Release-iphoneos -name "*.app" -type d | head -n 1)
+          # 因为上面配置是 Debug，所以去 debug-iphoneos 找
+          APP_PATH=$(find build/debug-iphoneos -name "*.app" -type d | head -n 1)
           
           if [ -z "$APP_PATH" ]; then
             echo "❌ 错误：在 build 目录中没找到编译好的 .app 文件"
@@ -156,6 +155,8 @@ jobs:
             exit 1
           fi
           
+          echo "正在打包: $APP_PATH"
+          mkdir -p Payload
           cp -r "$APP_PATH" Payload/
           zip -r AMLL-Player-iOS-Unsigned.ipa Payload
           
