@@ -78,6 +78,7 @@ jobs:
           SDK_PATH=$(xcrun --sdk iphonesimulator --show-sdk-path)
           echo "SDK Path: $SDK_PATH"
           echo "BINDGEN_EXTRA_CLANG_ARGS=-isysroot $SDK_PATH" >> $GITHUB_ENV
+          echo "SDKROOT=$SDK_PATH" >> $GITHUB_ENV
         shell: bash
 
       - name: 下载预编译的 FFmpeg 库 (iOS)
