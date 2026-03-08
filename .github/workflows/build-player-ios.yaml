@@ -144,20 +144,36 @@ jobs:
 
       - name: 手动封包为 .ipa 文件
         run: |
+          # 1. 进入苹果项目目录
           cd packages/player/src-tauri/gen/apple
           
-          # 因为上面配置是 Debug，所以去 debug-iphoneos 找
-          APP_PATH=$(find build/debug-iphoneos -name "*.app" -type d | head -n 1)
+          # 2. 定位 .app 目录 (此时它已经由 xcodebuild 生成，但缺前端资源)
+          APP_DIR=$(find build/debug-iphoneos -name "*.app" -type d | head -n 1)
           
-          if [ -z "$APP_PATH" ]; then
-            echo "❌ 错误：在 build 目录中没找到编译好的 .app 文件"
-            ls -R build
+          if [ -z "$APP_DIR" ]; then
+            echo "❌ 错误：没找到 .app 目录，请检查上一步 xcodebuild 是否成功"
+            exit 1
+          fi
+
+          # 3. 【核心修复】将 Vite 产出的前端资源拷贝进 .app 包
+          # 注意：Vite 产物在 packages/player/dist，
+          # 我们现在的路径是 packages/player/src-tauri/gen/apple，所以是 ../../../dist
+          echo "🚀 正在将前端资源注入 .app 包..."
+          cp -r ../../../dist/* "$APP_DIR/"
+
+          # 4. 验证 index.html 是否到位
+          if [ -f "$APP_DIR/index.html" ]; then
+            echo "✅ index.html 注入成功！"
+          else
+            echo "❌ 错误：index.html 注入失败，请检查路径。"
+            ls -R ../../../dist
             exit 1
           fi
           
-          echo "正在打包: $APP_PATH"
+          # 5. 开始封包
+          echo "📦 正在打包为 .ipa..."
           mkdir -p Payload
-          cp -r "$APP_PATH" Payload/
+          cp -r "$APP_DIR" Payload/
           zip -r AMLL-Player-iOS-Unsigned.ipa Payload
           
           echo "IPA 文件生成成功。"
