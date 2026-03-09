@@ -58,7 +58,7 @@ jobs:
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
-          targets: aarch64-apple-ios-sim,wasm32-unknown-unknown
+          targets: aarch64-apple-ios, wasm32-unknown-unknown
 
       - name: 安装 wasm-pack
         uses: jetli/wasm-pack-action@v0.4.0
@@ -110,25 +110,31 @@ jobs:
       - name: 手动构建未签名的 iOS 应用
         run: |
           unset DYLD_LIBRARY_PATH
-          export SDKROOT=$(xcrun --sdk iphonesimulator --show-sdk-path)
-          export DYLD_ROOT_PATH=$SDKROOT
+          unset DYLD_ROOT_PATH
+
+          export SDKROOT=$(xcrun --sdk iphoneos --show-sdk-path)
+
           export BINDGEN_EXTRA_CLANG_ARGS="-isysroot $SDKROOT"
           export FFMPEG_DIR="${{ github.workspace }}/vendor/ffmpeg_ios"
           export PKG_CONFIG_PATH="$FFMPEG_DIR/lib/pkgconfig"
-          export CFLAGS="-target arm64-apple-ios-simulator -I$FFMPEG_DIR/include"
+
+          export CFLAGS="-target arm64-apple-ios -isysroot $SDKROOT -I$FFMPEG_DIR/include"
           
           cd packages/player/src-tauri
-          cargo build --release --target aarch64-apple-ios-sim
+          cargo build --release --target aarch64-apple-ios
           
           cd gen/apple
+
           mkdir -p .tauri-resources
           cp -r ../../../dist/* .tauri-resources/
+
           sed -i '' '/tauri ios xcode-script/d' amll-player.xcodeproj/project.pbxproj
+
           xcodebuild build \
             -project amll-player.xcodeproj \
             -scheme amll-player_iOS \
             -configuration Release \
-            -sdk iphonesimulator \
+            -sdk iphoneos \
             -arch arm64 \
             SYMROOT="$(pwd)/build" \
             CODE_SIGNING_ALLOWED=NO \
@@ -139,7 +145,7 @@ jobs:
       - name: 打包为未签名的 .ipa 文件
         run: |
           mkdir -p Payload
-          mv packages/player/src-tauri/gen/apple/build/Release-iphonesimulator/*.app Payload/
+          cp -r packages/player/src-tauri/gen/apple/build/Release-iphoneos/*.app Payload/
           zip -r unsigned.ipa Payload/
 
       - name: 上传产物到 Action Artifact
