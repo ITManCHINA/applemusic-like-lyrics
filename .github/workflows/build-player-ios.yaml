@@ -114,6 +114,7 @@ jobs:
           export BINDGEN_EXTRA_CLANG_ARGS="-isysroot $SDKROOT"
           export PKG_CONFIG_PATH="${{ github.workspace }}/vendor/ffmpeg_ios/lib/pkgconfig"
           export PKG_CONFIG_SYSROOT_DIR=$SDKROOT
+          export CFLAGS="-target aarch64-apple-ios-sim"
           
           cd packages/player/src-tauri
           cargo build --release --target aarch64-apple-ios-sim
