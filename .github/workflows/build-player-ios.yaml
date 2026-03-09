@@ -109,8 +109,9 @@ jobs:
 
       - name: 手动构建未签名的 iOS 应用
         run: |
-          unset DYLD_LIBRARY_PATH
-          unset DYLD_ROOT_PATH
+          unset MACOSX_DEPLOYMENT_TARGET
+          
+          export IPHONEOS_DEPLOYMENT_TARGET=13.0
 
           export SDKROOT=$(xcrun --sdk iphoneos --show-sdk-path)
 
