@@ -114,11 +114,16 @@ jobs:
 
           export SDKROOT=$(xcrun --sdk iphoneos --show-sdk-path)
 
-          export BINDGEN_EXTRA_CLANG_ARGS="-isysroot $SDKROOT"
           export FFMPEG_DIR="${{ github.workspace }}/vendor/ffmpeg_ios"
+
+          export CC=$(xcrun --sdk iphoneos --find clang)
+          export AR=$(xcrun --sdk iphoneos --find ar)
+
+          export PKG_CONFIG_ALLOW_CROSS=1
           export PKG_CONFIG_PATH="$FFMPEG_DIR/lib/pkgconfig"
 
-          export CFLAGS="-target arm64-apple-ios -isysroot $SDKROOT -I$FFMPEG_DIR/include"
+          export CFLAGS="-target arm64-apple-ios -isysroot $SDKROOT -I$FFMPEG_DIR/include -miphoneos-version-min=13.0"
+          export BINDGEN_EXTRA_CLANG_ARGS="-target arm64-apple-ios -isysroot $SDKROOT"
           
           cd packages/player/src-tauri
           cargo build --release --target aarch64-apple-ios
