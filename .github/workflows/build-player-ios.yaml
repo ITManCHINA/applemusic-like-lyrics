@@ -111,6 +111,7 @@ jobs:
         run: |
           unset DYLD_LIBRARY_PATH
           export SDKROOT=$(xcrun --sdk iphonesimulator --show-sdk-path)
+          export DYLD_ROOT_PATH=$SDKROOT
           export BINDGEN_EXTRA_CLANG_ARGS="-isysroot $SDKROOT"
           export FFMPEG_DIR="${{ github.workspace }}/vendor/ffmpeg_ios"
           export PKG_CONFIG_PATH="$FFMPEG_DIR/lib/pkgconfig"
