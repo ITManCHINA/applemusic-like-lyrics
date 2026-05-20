@@ -2,6 +2,7 @@ import type {
 	LyricLine,
 	LyricLineMouseEvent,
 	LyricPlayerBase,
+	OptimizeLyricOptions,
 	spring,
 } from "@applemusic-like-lyrics/core";
 import {
@@ -9,8 +10,10 @@ import {
 	MaskObsceneWordsMode,
 } from "@applemusic-like-lyrics/core";
 import {
+	type ForwardRefExoticComponent,
 	forwardRef,
 	type HTMLProps,
+	type RefAttributes,
 	useEffect,
 	useImperativeHandle,
 	useLayoutEffect,
@@ -80,6 +83,10 @@ export interface LyricPlayerProps {
 	 * 设置不雅用语掩码使用的字符，默认为 `*`
 	 */
 	maskObsceneWordChar?: string;
+	/**
+	 * 设置歌词优化选项
+	 */
+	optimizeOptions?: OptimizeLyricOptions;
 	/**
 	 * 设置当前播放歌词，要注意传入后这个数组内的信息不得修改，否则会发生错误
 	 */
@@ -163,10 +170,10 @@ export interface LyricPlayerRef {
  *
  * 尽可能贴切 Apple Music for iPad 的歌词效果设计，且做了力所能及的优化措施
  */
-export const LyricPlayer = forwardRef<
-	LyricPlayerRef,
-	HTMLProps<HTMLDivElement> & LyricPlayerProps
->(
+export const LyricPlayer: ForwardRefExoticComponent<
+	Omit<HTMLProps<HTMLDivElement> & LyricPlayerProps, "ref"> &
+		RefAttributes<LyricPlayerRef>
+> = forwardRef<LyricPlayerRef, HTMLProps<HTMLDivElement> & LyricPlayerProps>(
 	(
 		{
 			disabled,
@@ -179,6 +186,7 @@ export const LyricPlayer = forwardRef<
 			maskObsceneWordsMode,
 			maskObsceneWordChar,
 			hidePassedLines,
+			optimizeOptions,
 			lyricLines,
 			currentTime,
 			isSeeking,
@@ -210,14 +218,23 @@ export const LyricPlayer = forwardRef<
 		}, [lyricPlayer]);
 
 		useLayoutEffect(() => {
+			if (optimizeOptions !== undefined) {
+				corePlayer?.setOptimizeOptions(optimizeOptions);
+			}
+
 			if (lyricLines !== undefined) {
 				corePlayer?.setLyricLines(lyricLines, currentTimeRef.current);
+
+				if (currentTimeRef.current !== undefined) {
+					corePlayer?.setCurrentTime(currentTimeRef.current, true);
+				}
+
 				corePlayer?.update();
 			} else {
 				corePlayer?.setLyricLines([]);
 				corePlayer?.update();
 			}
-		}, [corePlayer, lyricLines]);
+		}, [corePlayer, lyricLines, optimizeOptions]);
 
 		useEffect(() => {
 			if (!disabled) {
@@ -238,6 +255,7 @@ export const LyricPlayer = forwardRef<
 					canceled = true;
 				};
 			}
+			return;
 		}, [corePlayer, disabled]);
 
 		useEffect(() => {
@@ -278,11 +296,14 @@ export const LyricPlayer = forwardRef<
 			corePlayer?.setEnableBlur(enableBlur ?? true);
 		}, [corePlayer, enableBlur]);
 
-		useEffect(() => {
+		useLayoutEffect(() => {
 			if (currentTime !== undefined) {
 				corePlayer?.setCurrentTime(currentTime, isSeeking);
 				currentTimeRef.current = currentTime;
-			} else corePlayer?.setCurrentTime(0);
+			} else {
+				corePlayer?.setCurrentTime(0);
+				currentTimeRef.current = 0;
+			}
 		}, [corePlayer, currentTime, isSeeking]);
 
 		useEffect(() => {
@@ -329,6 +350,7 @@ export const LyricPlayer = forwardRef<
 				corePlayer?.addEventListener("line-click", handler);
 				return () => corePlayer?.removeEventListener("line-click", handler);
 			}
+			return;
 		}, [corePlayer, onLyricLineClick]);
 
 		useEffect(() => {
@@ -339,6 +361,7 @@ export const LyricPlayer = forwardRef<
 				return () =>
 					corePlayer?.removeEventListener("line-contextmenu", handler);
 			}
+			return;
 		}, [corePlayer, onLyricLineContextMenu]);
 
 		useImperativeHandle(

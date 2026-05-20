@@ -39,7 +39,7 @@ yarn add @applemusic-like-lyrics/core # using yarn
 
 For detailed API documentation, please refer to [./docs/modules.md](./docs/modules.md)
 
-A test program can be found in [./src/test.ts](./src/test.ts).
+A test program can be found in [../playground/core/src/test.ts](../playground/core/src/test.ts).
 
 ```typescript
 import { LyricPlayer } from "@applemusic-like-lyrics/core";
@@ -78,6 +78,6 @@ The main styles are provided by `@applemusic-like-lyrics/core/style.css`. Common
 ## Development
 
 ```bash
-pnpm -C packages/core dev
-pnpm -C packages/core build
+pnpm --filter @applemusic-like-lyrics/core dev
+pnpm --filter @applemusic-like-lyrics/core build
 ```

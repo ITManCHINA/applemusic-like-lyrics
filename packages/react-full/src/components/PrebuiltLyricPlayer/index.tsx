@@ -3,6 +3,7 @@
  * 已经部署好所有组件的歌词播放器组件，在正确设置所有的 Jotai 状态后可以开箱即用
  */
 
+import type { OptimizeLyricOptions } from "@applemusic-like-lyrics/core";
 import {
 	BackgroundRender,
 	LyricPlayer,
@@ -308,21 +309,12 @@ const PrebuiltProgressBar: FC = React.memo(() => {
 						)}
 					</AnimatePresence>
 				</div>
-				<button
-					type="button"
-					style={{
-						...fontStyle,
-						cursor: "pointer",
-						userSelect: "none",
-						background: "none",
-						border: "none",
-						padding: 0,
-						color: "inherit",
-					}}
+				<div
+					style={{ ...fontStyle, cursor: "pointer", userSelect: "none" }}
 					onClick={() => setShowRemaining(!showRemaining)}
 				>
 					{showRemaining ? <TimeLabel isRemaining /> : <TotalDurationLabel />}
-				</button>
+				</div>
 			</div>
 		</div>
 	);
@@ -350,7 +342,9 @@ function getLyricFontSizeFromPreset(preset: LyricSizePreset): string {
 const PrebuiltCoreLyricPlayer: FC<{
 	alignPosition: number;
 	alignAnchor: "center" | "bottom" | "top";
-}> = ({ alignPosition, alignAnchor }) => {
+	bottomLine?: React.ReactNode;
+	optimizeOptions?: OptimizeLyricOptions;
+}> = ({ alignPosition, alignAnchor, bottomLine, optimizeOptions }) => {
 	const amllPlayerRef = useRef<LyricPlayerRef>(null);
 	const musicIsPlaying = useAtomValue(musicPlayingAtom);
 	const lyricLines = useAtomValue(musicLyricLinesAtom);
@@ -443,6 +437,7 @@ const PrebuiltCoreLyricPlayer: FC<{
 			alignAnchor={alignAnchor}
 			currentTime={musicPlayingPosition}
 			lyricLines={processedLyricLines}
+			optimizeOptions={optimizeOptions}
 			enableBlur={enableLyricLineBlurEffect}
 			enableScale={enableLyricLineScaleEffect}
 			enableSpring={enableLyricLineSpringAnimation}
@@ -456,6 +451,7 @@ const PrebuiltCoreLyricPlayer: FC<{
 			onLyricLineContextMenu={(evt) =>
 				onLyricLineContextMenu?.(evt, amllPlayerRef.current)
 			}
+			bottomLine={bottomLine}
 		/>
 	);
 };
@@ -506,11 +502,18 @@ const PrebuiltMusicControls: FC<
 	);
 };
 
+export interface PrebuiltLyricPlayerProps extends HTMLProps<HTMLDivElement> {
+	bottomLineSlot?: React.ReactNode;
+	optimizeOptions?: OptimizeLyricOptions;
+}
+
 /**
  * 已经部署好所有组件的歌词播放器组件，在正确设置所有的 Jotai 状态后可以开箱即用
  */
-export const PrebuiltLyricPlayer: FC<HTMLProps<HTMLDivElement>> = ({
+export const PrebuiltLyricPlayer: FC<PrebuiltLyricPlayerProps> = ({
 	className,
+	bottomLineSlot,
+	optimizeOptions,
 	...rest
 }) => {
 	const [hideLyricView, setHideLyricView] = useAtom(hideLyricViewAtom);
@@ -559,6 +562,7 @@ export const PrebuiltLyricPlayer: FC<HTMLProps<HTMLDivElement>> = ({
 			setAlignPosition(0.1);
 			setAlignAnchor("top");
 		}
+		return;
 	}, [isVertical, layoutEl]);
 
 	const verticalImmerseCover =
@@ -694,6 +698,8 @@ export const PrebuiltLyricPlayer: FC<HTMLProps<HTMLDivElement>> = ({
 					<PrebuiltCoreLyricPlayer
 						alignPosition={alignPosition}
 						alignAnchor={alignAnchor}
+						bottomLine={bottomLineSlot}
+						optimizeOptions={optimizeOptions}
 					/>
 				}
 				hideLyric={hideLyricView}

@@ -1,27 +1,26 @@
 {
 	"name": "applemusic-like-lyrics",
 	"private": true,
-	"license": "GPL-3.0",
+	"license": "AGPL-3.0-only",
+	"type": "module",
 	"devDependencies": {
 		"@biomejs/biome": "catalog:",
-		"lerna": "^9.0.4",
-		"nx": "^22.5.2",
-		"typescript": "catalog:"
+		"@nx/js": "^22.7.2",
+		"@typescript/native-preview": "7.0.0-dev.20260516.1",
+		"npm-run-all2": "^9.0.0",
+		"nx": "^22.7.2",
+		"swc-node": "^1.0.0",
+		"tsdown": "catalog:"
 	},
 	"scripts": {
 		"build:libs": "nx run-many --target=build --projects=tag:library",
-		"format": "biome format . --write"
+		"ci:build:libs": "pnpm run build:libs",
+		"test:libs": "nx run-many --target=test --projects=ttml,lyric",
+		"ci:test:libs": "pnpm run test:libs",
+		"format": "biome format . --write",
+		"lint": "biome lint . --fix",
+		"ci:lint": "biome lint . --error-on-warnings",
+		"release:plan:check": "nx release plan:check"
 	},
-	"packageManager": "pnpm@10.18.3",
-	"pnpm": {
-		"onlyBuiltDependencies": [
-			"@applemusic-like-lyrics/lyric",
-			"@biomejs/biome",
-			"@parcel/watcher",
-			"@swc/core",
-			"esbuild",
-			"nx",
-			"sharp"
-		]
-	}
+	"packageManager": "pnpm@11.1.0"
 }

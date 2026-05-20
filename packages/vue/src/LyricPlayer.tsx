@@ -1,25 +1,27 @@
 import {
 	type BaseRenderer,
 	LyricPlayer as CoreLyricPlayer,
-	MaskObsceneWordsMode,
 	type LyricLine,
 	type LyricLineMouseEvent,
 	type LyricPlayerBase,
+	MaskObsceneWordsMode,
+	type OptimizeLyricOptions,
 	type spring,
 } from "@applemusic-like-lyrics/core";
 import {
+	computed,
+	defineComponent,
 	type ExtractPublicPropTypes,
+	onMounted,
+	onUnmounted,
 	type PropType,
 	type Ref,
+	ref,
 	type ShallowRef,
 	type SlotsType,
 	Teleport,
-	computed,
-	defineComponent,
-	onMounted,
-	onUnmounted,
-	ref,
 	useTemplateRef,
+	watch,
 	watchEffect,
 } from "vue";
 
@@ -101,8 +103,15 @@ const lyricPlayerProps = {
 	 * 设置歌词中不雅用语的掩码模式，默认为 `MaskObsceneWordsMode.Disabled`，即不掩码
 	 */
 	maskObsceneWordsMode: {
-		type: Object as PropType<MaskObsceneWordsMode>,
+		type: String as PropType<MaskObsceneWordsMode>,
 		default: MaskObsceneWordsMode.Disabled,
+	},
+	/**
+	 * 设置歌词优化选项
+	 */
+	optimizeOptions: {
+		type: Object as PropType<OptimizeLyricOptions>,
+		required: false,
 	},
 	/**
 	 * 设置当前播放歌词，要注意传入后这个数组内的信息不得修改，否则会发生错误
@@ -309,10 +318,27 @@ export const LyricPlayer = defineComponent({
 			else playerRef.value?.setEnableScale(true);
 		});
 
-		watchEffect(() => {
-			if (props.lyricLines !== undefined)
-				playerRef.value?.setLyricLines(props.lyricLines);
-		});
+		watch(
+			[playerRef, () => props.lyricLines, () => props.optimizeOptions],
+			([player, lyricLines, optimizeOptions]) => {
+				if (!player) return;
+
+				if (optimizeOptions !== undefined) {
+					player.setOptimizeOptions(optimizeOptions);
+				}
+
+				if (lyricLines !== undefined) {
+					player.setLyricLines(lyricLines);
+				} else {
+					player.setLyricLines([]);
+				}
+
+				if (props.currentTime !== undefined) {
+					player.setCurrentTime(props.currentTime, true);
+				}
+			},
+			{ immediate: true },
+		);
 
 		watchEffect(() => {
 			if (props.currentTime !== undefined)

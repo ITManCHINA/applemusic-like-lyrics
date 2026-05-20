@@ -39,7 +39,7 @@ yarn add @applemusic-like-lyrics/core # 使用 yarn
 
 详细的 API 文档请参考 [./docs/modules.md](./docs/modules.md)
 
-一个测试用途的程序可以在 [./src/test.ts](./src/test.ts) 里找到。
+一个测试用途的程序可以在 [../playground/core/src/test.ts](../playground/core/src/test.ts) 里找到。
 
 ```typescript
 import { LyricPlayer } from "@applemusic-like-lyrics/core";
@@ -78,6 +78,6 @@ player.update(0) // 更新歌词组件动画（需要逐帧调用）
 ## 开发与构建
 
 ```bash
-pnpm -C packages/core dev
-pnpm -C packages/core build
+pnpm --filter @applemusic-like-lyrics/core dev
+pnpm --filter @applemusic-like-lyrics/core build
 ```

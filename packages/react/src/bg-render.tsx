@@ -5,8 +5,10 @@ import {
 	MeshGradientRenderer,
 } from "@applemusic-like-lyrics/core";
 import {
+	type ForwardRefExoticComponent,
 	forwardRef,
 	type HTMLProps,
+	type RefAttributes,
 	useEffect,
 	useImperativeHandle,
 	useRef,
@@ -93,7 +95,10 @@ export interface BackgroundRenderRef {
 /**
  * 流体背景渲染组件，通过提供图片链接可以显示出酷似 Apple Music 的流体背景效果
  */
-export const BackgroundRender = forwardRef<
+export const BackgroundRender: ForwardRefExoticComponent<
+	Omit<HTMLProps<HTMLDivElement> & BackgroundRenderProps, "ref"> &
+		RefAttributes<BackgroundRenderRef>
+> = forwardRef<
 	BackgroundRenderRef,
 	HTMLProps<HTMLDivElement> & BackgroundRenderProps
 >(
@@ -195,7 +200,7 @@ export const BackgroundRender = forwardRef<
 			ref,
 			() => ({
 				wrapperEl: wrapperRef.current,
-				bgRender: coreBGRenderRef.current!,
+				bgRender: coreBGRenderRef.current as AbstractBaseRenderer,
 			}),
 			[wrapperRef.current, coreBGRenderRef.current],
 		);

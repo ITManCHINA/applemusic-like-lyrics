@@ -1,5 +1,8 @@
 {
 	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"files": {
+		"includes": ["**", "!packages/playground/core/src/components/ui"]
+	},
 	"formatter": {
 		"enabled": true,
 		"formatWithErrors": false,
@@ -27,7 +30,8 @@
 	"linter": {
 		"enabled": true,
 		"rules": {
-			"recommended": true
+			"recommended": true,
+			"a11y": "off"
 		}
 	},
 	"assist": {
@@ -41,5 +45,11 @@
 		"enabled": true,
 		"clientKind": "git",
 		"useIgnoreFile": true
+	},
+	"css": {
+		"parser": {
+			"cssModules": true,
+			"tailwindDirectives": true
+		}
 	}
 }

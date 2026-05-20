@@ -1,6 +1,6 @@
 <div align=center>
 
-![Apple Music-like Lyrics - A lyric page component library for Web](https://github.com/user-attachments/assets/ca6a98d4-28ea-4fb6-beec-7948f2ac87ec)
+![Apple Music-like Lyrics - A lyric page component library for Web](https://github.com/user-attachments/assets/cd6e4ba3-2640-4aab-aeb1-0762f97c8880)
 
 English / [简体中文](./README-CN.md)
 
@@ -8,7 +8,7 @@ English / [简体中文](./README-CN.md)
 
 <div align=center>
 
-A lyric player component library that aims to look similar to iPad version of Apple Music. With [DOM](./packages/core/README.md), [React](./packages/react/README.md) and [Vue](./packages/vue/README.md) bindings. [Also there's a standalone player based on it!](./packages/player/README.md)
+A lyric player component library that aims to look similar to iPad version of Apple Music. With [DOM](./packages/core/README.md), [React](./packages/react/README.md) and [Vue](./packages/vue/README.md) bindings.
 
 This is perhaps the most iPad Apple Music-like lyric page you've seen in frontend.
 
@@ -16,11 +16,17 @@ Although the goal of this project is not to imitate it completely, it will polis
 
 **—— AMLL Series Projects ——**
 
-[AMLL TTML DB - TTML Syllable Lyric Database](https://github.com/Steve-xmh/amll-ttml-db)
-/
-[AMLL TTML Tool - TTML Syllable Lyric Editor](https://github.com/Steve-xmh/amll-ttml-tool)
+[AMLL TTML DB - TTML Syllable Lyric Database](https://github.com/amll-dev/amll-ttml-db)
 
-[Projects that references AMLL](https://github.com/Steve-xmh/applemusic-like-lyrics/discussions/397)
+[AMLL TTML Tool - TTML Syllable Lyric Editor](https://github.com/amll-dev/amll-ttml-tool)
+/
+[AMLL Editor - Next-Gen TTML Syllable Lyric Editor](https://github.com/amll-dev/amll-editor)
+
+[AMLL Player - Loacal Music Player](https://github.com/amll-dev/amll-player)
+/
+[AMLL Page - Web Music Player](https://github.com/amll-dev/amll-page)
+
+[Projects that references AMLL](https://github.com/amll-dev/applemusic-like-lyrics/discussions/397)
 
 </div>
 
@@ -32,15 +38,6 @@ Although the goal of this project is not to imitate it completely, it will polis
 -   [![AMLL-React](https://img.shields.io/badge/React-%23149eca?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/react/README.md): AMLL React binding, provides React component forms of lyric display and dynamic fluid background components
 -   [![AMLL-Vue](https://img.shields.io/badge/Vue-%2342d392?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/vue/README.md): AMLL Vue binding, provides Vue component forms of lyric display and dynamic fluid background components
 -   [![AMLL-Lyric](https://img.shields.io/badge/Lyric-%23FB8C84?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/lyric/README.md): AMLL lyric parsing module, provides parsing and serialization support for various lyric formats including LyRiC, YRC, QRC, and Lyricify Syllable
-### External tools
-
--   [AMLL Player](./packages/player/README.md): AMLL External Player provides an independent external lyrics player, and communicates with any program that implements the AMLL WebSocket protocol to display lyrics
--   [AMLL TTML Tool](https://github.com/Steve-xmh/amll-ttml-tool): AMLL TTML Editor provides editing support for TTML format lyrics and real-time preview using AMLL Core
--   [AMLL TTML Database](https://github.com/Steve-xmh/amll-ttml-db): AMLL TTML Database provides a repository of TTML lyrics so that various lyric players can use community-made word-by-word lyrics
-
-## AMLL Player Preview Gallery
-
-![AMLL Player Preview](https://github.com/user-attachments/assets/2b93b28f-7f79-4092-a0a5-bc7c66e731a9)
 
 ## Browser compatibility alerts
 
@@ -76,12 +73,6 @@ GPU performance capable of running at full 60 fps at the expected sizes under th
 
 -   [Node.js](https://nodejs.org/)
 -   [pnpm](https://pnpm.io/)
--   [Rust toolchain](https://rustup.rs/)
--   [wasm-pack](https://rustwasm.github.io/wasm-pack/)
-
-For building the standalone **AMLL Player** desktop application, additionally install:
-
--   [Tauri prerequisites](https://tauri.app/start/prerequisites/) for your platform
 
 ### Building the component libraries
 
@@ -92,7 +83,7 @@ Clone this repository, then run the following commands in the project root:
 pnpm install
 
 # Production build (all library packages)
-pnpm build:libs
+pnpm run build:libs
 ```
 
 ### Building a single package
@@ -103,14 +94,6 @@ pnpm nx run @applemusic-like-lyrics/core:build
 
 # Example: development build of @applemusic-like-lyrics/lyric
 pnpm nx run @applemusic-like-lyrics/lyric:build:dev
-```
-
-### Building the AMLL Player desktop application
-
-```bash
-cd packages/player
-pnpm tauri build          # Production build
-pnpm tauri dev            # Development mode
 ```
 
 ## Acknowledgements

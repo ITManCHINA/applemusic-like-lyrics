@@ -1,12 +1,12 @@
 <div align=center>
 
-![Apple Music-like Lyrics - A lyric page component library for Web](https://github.com/user-attachments/assets/ca6a98d4-28ea-4fb6-beec-7948f2ac87ec)
+![Apple Music-like Lyrics - 一个基于 Web 技术制作的类 Apple Music 歌词显示组件库](https://github.com/user-attachments/assets/cd6e4ba3-2640-4aab-aeb1-0762f97c8880)
 
 # Apple Music-like Lyrics
 
 [English](./README.md) / 简体中文
 
-一个基于 Web 技术制作的类 Apple Music 歌词显示组件库，同时支持[ DOM 原生](./packages/core/README.md)、[React ](./packages/react/README.md)和[ Vue ](./packages/react/README.md)绑定，[与各种平台兼容的外置播放器](./packages/player/README.md)也仍在制作当中。
+一个基于 Web 技术制作的类 Apple Music 歌词显示组件库，同时支持 [DOM 原生](./packages/core/README.md)、[React](./packages/react/README.md) 和 [Vue](./packages/react/README.md) 绑定。
 
 这是你能在前端系里能见到的最像 iPad Apple Music 的播放页面了。
 
@@ -14,40 +14,49 @@
 
 **—— AMLL 生态作品 ——**
 
-[AMLL TTML DB 逐词歌词仓库](https://github.com/Steve-xmh/amll-ttml-db)
-/
-[AMLL TTML Tool 逐词歌词编辑器](https://github.com/Steve-xmh/amll-ttml-tool)
+[AMLL TTML DB 逐词歌词仓库](https://github.com/amll-dev/amll-ttml-db)
 
-[引用了 AMLL 的项目汇总](https://github.com/Steve-xmh/applemusic-like-lyrics/discussions/397)
+[AMLL TTML Tool 逐词歌词编辑器](https://github.com/amll-dev/amll-ttml-tool)
+/
+[AMLL Editor 下一代逐词歌词编辑器](https://github.com/amll-dev/amll-editor)
+
+[AMLL Player 本地播放器](https://github.com/amll-dev/amll-player)
+/
+[AMLL Page 网页播放器](https://github.com/apoint123/amll-page)
+
+
+[引用了 AMLL 的项目汇总](https://github.com/amll-dev/applemusic-like-lyrics/discussions/397)
 
 </div>
+
+> [!Warning]
+> 致 AMLL Player 的开发/使用者：  
+> AMLL Player 已迁移至 [独立仓库](https://github.com/amll-dev/amll-player/blob/main/README-CN.md)
+> 
+> 仓库链接已更新为 https://github.com/amll-dev/amll-player
 
 ## AMLL 生态及源码结构
 
 ### 主要模块
 
--   [![AMLL-Core](https://img.shields.io/badge/Core-%233178c6?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/core/README.md)：AMLL 核心组件库，以 DOM 原生方式编写，提供歌词显示组件和动态流体背景组件
--   [![AMLL-React](https://img.shields.io/badge/React-%23149eca?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/react/README.md)：AMLL React 绑定，提供 React 组件形式的歌词显示组件和动态流体背景组件
--   [![AMLL-Vue](https://img.shields.io/badge/Vue-%2342d392?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/vue/README.md)：AMLL Vue 绑定，提供 Vue 组件形式的歌词显示组件和动态流体背景组件
--   [![AMLL-Lyric](https://img.shields.io/badge/Lyric-%23FB8C84?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/lyric/README.md)：AMLL 歌词解析模块，提供对 LyRiC, YRC, QRC, Lyricify Syllable 各种歌词格式的解析和序列化支持
-
-### 外部工具
-
--   [AMLL Player](./packages/player/README.md)：AMLL 外置播放器，提供独立的外置歌词播放器，并通过独有的 WebSocket 协议与 AMLL 任意实现了协议的程序进行通信展示歌词
--   [AMLL TTML Tool](https://github.com/Steve-xmh/amll-ttml-tool)： AMLL TTML 编辑器，提供对 TTML 格式歌词的编辑支持，并使用 AMLL Core 进行实时预览
--   [AMLL TTML Database](https://github.com/Steve-xmh/amll-ttml-db)： AMLL TTML 数据库，提供 TTML 歌词存储仓库，以让各类歌词播放器可以使用由社区制作的 TTML 逐词歌词
+-   [![AMLL-Core](https://img.shields.io/badge/Core-%233178c6?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/core/README-CN.md)：AMLL 核心组件库，以 DOM 原生方式编写，提供歌词显示组件和动态流体背景组件
+-   [![AMLL-React](https://img.shields.io/badge/React-%23149eca?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/react/README-CN.md)：AMLL React 绑定，提供 React 组件形式的歌词显示组件和动态流体背景组件
+-   [![AMLL-React-Full](https://img.shields.io/badge/React%20Full-%23149eca?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/react-full/README-CN.md)：AMLL React 完整播放器组件库，提供可组合的播放页面组件
+-   [![AMLL-Vue](https://img.shields.io/badge/Vue-%2342d392?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/vue/README-CN.md)：AMLL Vue 绑定，提供 Vue 组件形式的歌词显示组件和动态流体背景组件
+-   [![AMLL-Lyric](https://img.shields.io/badge/Lyric-%23FB8C84?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/lyric/README-CN.md)：AMLL 歌词解析模块，提供对 LyRiC, YRC, QRC, Lyricify Syllable 各种歌词格式的解析和序列化支持
+-   [![AMLL-TTML](https://img.shields.io/badge/TTML-%23FB8C84?label=Apple%20Music-like%20Lyrics&labelColor=%23FB5C74)](./packages/ttml/README-CN.md)：AMLL TTML 处理模块，提供 TTML 的结构化解析、生成，以及与 AMLL 歌词数据的互转能力
 
 ## 浏览器兼容性提醒
 
 本组件框架最低要求使用以下浏览器或更新版本：
 
--   Chromuim/Edge 91+
+-   Chromium/Edge 91+
 -   Firefox 100+
 -   Safari 9.1+
 
 完整呈现组件所有效果需要使用以下浏览器或更新版本：
 
--   Chromuim 120+
+-   Chromium 120+
 -   Firefox 100+
 -   Safari 15.4+
 
@@ -71,12 +80,6 @@ GPU 性能在以下状况下能够以预期尺寸下满 60 帧运行：
 
 -   [Node.js](https://nodejs.org/)
 -   [pnpm](https://pnpm.io/)
--   [Rust 工具链](https://rustup.rs/)
--   [wasm-pack](https://rustwasm.github.io/wasm-pack/)
-
-如需构建 **AMLL Player** 桌面端应用，还需额外安装：
-
--   对应平台的 [Tauri 前置依赖](https://tauri.app/start/prerequisites/)
 
 ### 构建组件库
 
@@ -87,7 +90,7 @@ GPU 性能在以下状况下能够以预期尺寸下满 60 帧运行：
 pnpm install
 
 # 生产构建所有库包
-pnpm build:libs
+pnpm run build:libs
 ```
 
 ### 构建单个包
@@ -98,14 +101,6 @@ pnpm nx run @applemusic-like-lyrics/core:build
 
 # 示例：开发构建 @applemusic-like-lyrics/lyric
 pnpm nx run @applemusic-like-lyrics/lyric:build:dev
-```
-
-### 构建 AMLL Player 桌面端应用
-
-```bash
-cd packages/player
-pnpm tauri build   # 发行构建
-pnpm tauri dev     # 开发模式
 ```
 
 ## 鸣谢
