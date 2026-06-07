@@ -11,6 +11,7 @@
 	color: var(--amll-lp-color, white);
 	contain: strict;
 	mix-blend-mode: plus-lighter;
+	dynamic-range-limit: no-limit;
 	font-size: var(--amll-lp-font-size, max(max(5vh, 2.5vw), 12px));
 
 	@media screen and (max-width: 768px) {
