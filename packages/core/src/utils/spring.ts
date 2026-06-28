@@ -10,6 +10,12 @@ export interface SpringParams {
 
 type seconds = number;
 
+interface SpringSolvers {
+	x: (t: seconds) => number; // 位移公式
+	v: (t: seconds) => number; // 速度（一阶导数）公式
+	a: (t: seconds) => number; // 加速度（二阶导数）公式
+}
+
 export class Spring {
 	private currentPosition = 0;
 	private targetPosition = 0;
@@ -20,14 +26,14 @@ export class Spring {
 	private getV2: (t: seconds) => number;
 	private queueParams:
 		| (Partial<SpringParams> & {
-				time: number;
-		  })
+			time: number;
+		})
 		| undefined;
 	private queuePosition:
 		| {
-				time: number;
-				position: number;
-		  }
+			time: number;
+			position: number;
+		}
 		| undefined;
 	constructor(currentPosition = 0) {
 		this.targetPosition = currentPosition;
@@ -39,15 +45,32 @@ export class Spring {
 	private resetSolver() {
 		const curV = this.getV(this.currentTime);
 		this.currentTime = 0;
-		this.currentSolver = solveSpring(
-			this.currentPosition,
-			curV,
-			this.targetPosition,
-			0,
-			this.params,
-		);
-		this.getV = getVelocity(this.currentSolver);
-		this.getV2 = getVelocity(this.getV);
+
+		const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent);
+		if (isMobile) {
+			// 移动端采用无损高性能解析解求导，消除高频数值微分微量采样与闭包开销
+			const solvers = solveSpringWithDerivatives(
+				this.currentPosition,
+				curV,
+				this.targetPosition,
+				0,
+				this.params,
+			);
+			this.currentSolver = solvers.x;
+			this.getV = solvers.v;
+			this.getV2 = solvers.a;
+		} else {
+			// 桌面端完全还原原有的数值微分解求导逻辑，保证原效果不受影响
+			this.currentSolver = solveSpring(
+				this.currentPosition,
+				curV,
+				this.targetPosition,
+				0,
+				this.params,
+			);
+			this.getV = getVelocity(this.currentSolver);
+			this.getV2 = getVelocity(this.getV);
+		}
 	}
 	arrived(): boolean {
 		return (
@@ -152,7 +175,78 @@ function solveSpring(
 		return (
 			to -
 			(Math.cos(t * dfm) * delta + Math.sin(t * dfm) * leftover) *
-				Math.E ** (t * dm)
+			Math.E ** (t * dm)
 		);
+	};
+}
+
+function solveSpringWithDerivatives(
+	from: number,
+	velocity: number,
+	to: number,
+	delay: seconds = 0,
+	params?: Partial<SpringParams>,
+): SpringSolvers {
+	const soft = params?.soft ?? false;
+	const stiffness = params?.stiffness ?? 100;
+	const damping = params?.damping ?? 10;
+	const mass = params?.mass ?? 1;
+	const delta = to - from;
+	if (soft || 1.0 <= damping / (2.0 * Math.sqrt(stiffness * mass))) {
+		const angular_frequency = -Math.sqrt(stiffness / mass);
+		const leftover = -angular_frequency * delta - velocity;
+		return {
+			x: (t: seconds) => {
+				t -= delay;
+				if (t < 0) return from;
+				return to - (delta + t * leftover) * Math.E ** (t * angular_frequency);
+			},
+			v: (t: seconds) => {
+				t -= delay;
+				if (t < 0) return velocity;
+				return -(leftover + (delta + t * leftover) * angular_frequency) * Math.E ** (t * angular_frequency);
+			},
+			a: (t: seconds) => {
+				t -= delay;
+				if (t < 0) return 0;
+				const w = angular_frequency;
+				return -(2 * leftover * w + (delta + t * leftover) * w * w) * Math.E ** (t * w);
+			}
+		};
+	}
+	const damping_frequency = Math.sqrt(4.0 * mass * stiffness - damping ** 2.0);
+	const leftover =
+		(damping * delta - 2.0 * mass * velocity) / damping_frequency;
+	const dfm = (0.5 * damping_frequency) / mass;
+	const dm = -(0.5 * damping) / mass;
+	return {
+		x: (t: seconds) => {
+			t -= delay;
+			if (t < 0) return from;
+			return (
+				to -
+				(Math.cos(t * dfm) * delta + Math.sin(t * dfm) * leftover) *
+					Math.E ** (t * dm)
+			);
+		},
+		v: (t: seconds) => {
+			t -= delay;
+			if (t < 0) return velocity;
+			const cosVal = Math.cos(t * dfm);
+			const sinVal = Math.sin(t * dfm);
+			const cVal = cosVal * delta + sinVal * leftover;
+			const dcVal = -dfm * sinVal * delta + dfm * cosVal * leftover;
+			return -(dcVal + cVal * dm) * Math.E ** (t * dm);
+		},
+		a: (t: seconds) => {
+			t -= delay;
+			if (t < 0) return 0;
+			const cosVal = Math.cos(t * dfm);
+			const sinVal = Math.sin(t * dfm);
+			const cVal = cosVal * delta + sinVal * leftover;
+			const dcVal = -dfm * sinVal * delta + dfm * cosVal * leftover;
+			const d2cVal = -dfm * dfm * cosVal * delta - dfm * dfm * sinVal * leftover;
+			return -(d2cVal + 2 * dcVal * dm + cVal * dm * dm) * Math.E ** (t * dm);
+		}
 	};
 }
