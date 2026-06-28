@@ -43,22 +43,42 @@ export const AudioFFTVisualizer: FC<
 				let stopped = false;
 
 				let buf: number[] = [];
+				let cachedResampleArray = new Float32Array(0); // 复用 TypedArray 缓存避免 GC
 
 				// 线性重采样，将 src 重采样为指定长度
-				function resampleLinear(src: number[], dstLen: number): number[] {
+				function resampleLinear(src: number[], dstLen: number): any {
+					const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent);
+					if (!isMobile) {
+						// 桌面端保持原有临时分配数组逻辑
+						const n = src.length;
+						if (dstLen <= 0 || n === 0) return [];
+						if (n === dstLen) return src.slice();
+						const out = new Array(dstLen);
+						const scale = (n - 1) / Math.max(1, dstLen - 1);
+						for (let i = 0; i < dstLen; i++) {
+							const x = i * scale;
+							const x0 = Math.floor(x);
+							const x1 = Math.min(n - 1, x0 + 1);
+							const t = x - x0;
+							out[i] = src[x0] * (1 - t) + src[x1] * t;
+						}
+						return out;
+					}
+					// 移动端复用 TypedArray
 					const n = src.length;
 					if (dstLen <= 0 || n === 0) return [];
-					if (n === dstLen) return src.slice();
-					const out = new Array(dstLen);
+					if (cachedResampleArray.length !== dstLen) {
+						cachedResampleArray = new Float32Array(dstLen);
+					}
 					const scale = (n - 1) / Math.max(1, dstLen - 1);
 					for (let i = 0; i < dstLen; i++) {
 						const x = i * scale;
 						const x0 = Math.floor(x);
 						const x1 = Math.min(n - 1, x0 + 1);
 						const t = x - x0;
-						out[i] = src[x0] * (1 - t) + src[x1] * t;
+						cachedResampleArray[i] = src[x0] * (1 - t) + src[x1] * t;
 					}
-					return out;
+					return cachedResampleArray;
 				}
 
 				function onFrame() {
