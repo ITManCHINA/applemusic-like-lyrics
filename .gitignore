@@ -19,5 +19,5 @@ target/
 .vscode/
 *.tsbuildinfo
 .million/
-**/dist
+#**/dist
 .playwright*/
