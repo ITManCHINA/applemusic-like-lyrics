@@ -16,6 +16,7 @@ import { blurImage } from "../img.ts";
 import { generateControlPoints } from "./cp-generate.ts";
 import { CONTROL_POINT_PRESETS } from "./cp-presets.ts";
 import meshFragShader from "./mesh.frag.glsl?raw";
+import meshMobileFragShader from "./mesh_mobile.frag.glsl?raw";
 import meshVertShader from "./mesh.vert.glsl?raw";
 import { clamp01 } from "#utils/clamp.ts";
 
@@ -996,6 +997,14 @@ export class MeshGradientRenderer extends BaseRenderer {
 			this.mainProgram.use();
 			gl.activeTexture(gl.TEXTURE0);
 			this.mainProgram.setUniform1f("u_time", tickTime / 10000);
+
+			const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent);
+			if (isMobile) {
+				// 仅在移动端预先在 JS 层面计算当前时间的 cos/sin 旋转参数，移出 Fragment Shader 像素级计算
+				const angle = (tickTime / 10000 + this.volume) * 2.0;
+				this.mainProgram.setUniform2f("u_rotSinCos", Math.sin(angle), Math.cos(angle));
+			}
+
 			this.mainProgram.setUniform1f(
 				"u_aspect",
 				this.manualControl ? 1 : this.canvas.width / this.canvas.height,
@@ -1080,10 +1089,11 @@ export class MeshGradientRenderer extends BaseRenderer {
 		gl.enable(gl.DEPTH_TEST);
 		gl.depthFunc(gl.ALWAYS);
 
+		const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent);
 		this.mainProgram = new GLProgram(
 			gl,
 			meshVertShader,
-			meshFragShader,
+			isMobile ? meshMobileFragShader : meshFragShader,
 			"main-program-mg",
 		);
 
@@ -1260,13 +1270,18 @@ export class MeshGradientRenderer extends BaseRenderer {
 			this.meshStates[0].texture.dispose();
 			this.meshStates[0].texture = new GLTexture(this.gl, imageData);
 		} else {
+			// 移动端（iOS 与 Android）环境下将精度从 50 降低到 10，可降减 96% 的顶点与三角形重绘
+			const isMobile = typeof navigator !== "undefined" && 
+				/Android|iPhone|iPad/i.test(navigator.userAgent);
+			const targetSubdivision = isMobile ? 10 : 50;
+
 			const newMesh = new BHPMesh(
 				this.gl,
 				this.mainProgram.attrs.a_pos,
 				this.mainProgram.attrs.a_color,
 				this.mainProgram.attrs.a_uv,
 			);
-			newMesh.resetSubdivition(50);
+			newMesh.resetSubdivition(targetSubdivision);
 
 			const chosenPreset =
 				Math.random() > 0.8
