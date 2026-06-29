@@ -18,6 +18,7 @@ import { CONTROL_POINT_PRESETS } from "./cp-presets.ts";
 import meshFragShader from "./mesh.frag.glsl?raw";
 import meshMobileFragShader from "./mesh_mobile.frag.glsl?raw";
 import meshVertShader from "./mesh.vert.glsl?raw";
+import meshMobileVertShader from "./mesh_mobile.vert.glsl?raw";
 import { clamp01 } from "#utils/clamp.ts";
 
 const quadVertShader = `
@@ -1003,12 +1004,18 @@ export class MeshGradientRenderer extends BaseRenderer {
 				// 仅在移动端预先在 JS 层面计算当前时间的 cos/sin 旋转参数，移出 Fragment Shader 像素级计算
 				const angle = (tickTime / 10000 + this.volume) * 2.0;
 				this.mainProgram.setUniform2f("u_rotSinCos", Math.sin(angle), Math.cos(angle));
-			}
 
-			this.mainProgram.setUniform1f(
-				"u_aspect",
-				this.manualControl ? 1 : this.canvas.width / this.canvas.height,
-			);
+				// 移动端使用 branchless 的 scale 计算，用 vec2(scaleX, scaleY) 替代 u_aspect 的 if-else 分支
+				const aspect = this.manualControl ? 1 : this.canvas.width / this.canvas.height;
+				const scaleX = aspect > 1.0 ? 1.0 : 1.0 / aspect;
+				const scaleY = aspect > 1.0 ? aspect : 1.0;
+				this.mainProgram.setUniform2f("u_scale", scaleX, scaleY);
+			} else {
+				this.mainProgram.setUniform1f(
+					"u_aspect",
+					this.manualControl ? 1 : this.canvas.width / this.canvas.height,
+				);
+			}
 			this.mainProgram.setUniform1i("u_texture", 0);
 			this.mainProgram.setUniform1f("u_volume", this.volume);
 			this.mainProgram.setUniform1f("u_alpha", 1.0);
@@ -1092,7 +1099,7 @@ export class MeshGradientRenderer extends BaseRenderer {
 		const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent);
 		this.mainProgram = new GLProgram(
 			gl,
-			meshVertShader,
+			isMobile ? meshMobileVertShader : meshVertShader,
 			isMobile ? meshMobileFragShader : meshFragShader,
 			"main-program-mg",
 		);

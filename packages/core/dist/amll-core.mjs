@@ -547,6 +547,9 @@ var mesh_mobile_frag_default = "precision highp float;\n\nvarying vec3 v_color;\
 //#region \0raw:C:/GitHub/applemusic-like-lyrics/packages/core/src/bg-render/mesh-renderer/mesh.vert.glsl
 var mesh_vert_default = "precision highp float;\r\n\r\nattribute vec2 a_pos;\r\nattribute vec3 a_color;\r\nattribute vec2 a_uv;\r\nvarying vec3 v_color;\r\nvarying vec2 v_uv;\r\n\r\nuniform float u_aspect;\r\n\r\nvoid main() {\r\n    v_color = a_color;\r\n    v_uv = a_uv;\r\n    vec2 pos = a_pos;\r\n    if (u_aspect > 1.0) {\r\n        pos.y *= u_aspect;\r\n    } else {\r\n        pos.x /= u_aspect;\r\n    }\r\n    gl_Position = vec4(pos, 0.0, 1.0);\r\n}\r\n";
 //#endregion
+//#region \0raw:C:/GitHub/applemusic-like-lyrics/packages/core/src/bg-render/mesh-renderer/mesh_mobile.vert.glsl
+var mesh_mobile_vert_default = "precision highp float;\n\nattribute vec2 a_pos;\nattribute vec3 a_color;\nattribute vec2 a_uv;\nvarying vec3 v_color;\nvarying vec2 v_uv;\n\nuniform vec2 u_scale;\n\nvoid main() {\n    v_color = a_color;\n    v_uv = a_uv;\n    gl_Position = vec4(a_pos * u_scale, 0.0, 1.0);\n}\n";
+//#endregion
 //#region src/bg-render/mesh-renderer/index.ts
 /**
 * @fileoverview
@@ -1254,8 +1257,11 @@ var MeshGradientRenderer = class extends BaseRenderer {
 			if (typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
 				const angle = (tickTime / 1e4 + this.volume) * 2;
 				this.mainProgram.setUniform2f("u_rotSinCos", Math.sin(angle), Math.cos(angle));
-			}
-			this.mainProgram.setUniform1f("u_aspect", this.manualControl ? 1 : this.canvas.width / this.canvas.height);
+				const aspect = this.manualControl ? 1 : this.canvas.width / this.canvas.height;
+				const scaleX = aspect > 1 ? 1 : 1 / aspect;
+				const scaleY = aspect > 1 ? aspect : 1;
+				this.mainProgram.setUniform2f("u_scale", scaleX, scaleY);
+			} else this.mainProgram.setUniform1f("u_aspect", this.manualControl ? 1 : this.canvas.width / this.canvas.height);
 			this.mainProgram.setUniform1i("u_texture", 0);
 			this.mainProgram.setUniform1f("u_volume", this.volume);
 			this.mainProgram.setUniform1f("u_alpha", 1);
@@ -1299,7 +1305,7 @@ var MeshGradientRenderer = class extends BaseRenderer {
 		gl.enable(gl.DEPTH_TEST);
 		gl.depthFunc(gl.ALWAYS);
 		const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent);
-		this.mainProgram = new GLProgram(gl, mesh_vert_default, isMobile ? mesh_mobile_frag_default : mesh_frag_default, "main-program-mg");
+		this.mainProgram = new GLProgram(gl, isMobile ? mesh_mobile_vert_default : mesh_vert_default, isMobile ? mesh_mobile_frag_default : mesh_frag_default, "main-program-mg");
 		this.quadProgram = new GLProgram(gl, quadVertShader, quadFragShader, "quad-program");
 		const quadBuffer = gl.createBuffer();
 		if (!quadBuffer) throw new Error("Failed to create quad buffer");
