@@ -1120,6 +1120,9 @@ export class MeshGradientRenderer extends BaseRenderer {
 			gl.STATIC_DRAW,
 		);
 
+		if (typeof window !== "undefined") {
+			(window as any).__meshRenderer = this;
+		}
 		this.requestTick();
 	}
 
