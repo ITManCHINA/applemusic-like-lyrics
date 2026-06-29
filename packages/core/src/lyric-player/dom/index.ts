@@ -71,11 +71,7 @@ export class DomLyricPlayer extends LyricPlayerBase {
 		"mix-blend-mode",
 		"plus-lighter",
 	);
-	readonly supportMaskImage: boolean = 
-		(typeof navigator !== "undefined" && 
-		/Android|iPhone|iPad/i.test(navigator.userAgent))
-			? false // 移动端强制关闭 Web Animations 路径以启用更高能效的 CSS 变量 calc 遮罩
-			: CSS.supports("mask-image", "none");
+	readonly supportMaskImage: boolean = CSS.supports("mask-image", "none");
 	readonly innerSize: [number, number] = [0, 0];
 
 	private readonly onMouseEventHandler = (e: MouseEvent) => {

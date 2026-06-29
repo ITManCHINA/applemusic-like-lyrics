@@ -19,10 +19,7 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 		this.element.appendChild(mainLine.getElement());
 		this.posY.setPosition(window.innerHeight * 2);
 
-		const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent);
-		if (!isMobile) {
-			lyricPlayer.resizeObserver.observe(this.element);
-		}
+		lyricPlayer.resizeObserver.observe(this.element);
 	}
 
 	get isInSight(): boolean {
@@ -57,15 +54,7 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 
 			playerEl.insertBefore(this.element, referenceNode);
 
-			const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent);
-			if (isMobile) {
-				if (!this.lyricPlayer.lyricGroupSize.has(this)) {
-					const h = this.element.clientHeight || 0;
-					this.lyricPlayer.lyricGroupSize.set(this, [this.element.clientWidth, h]);
-				}
-			} else {
-				this.lyricPlayer.resizeObserver.observe(this.element);
-			}
+			this.lyricPlayer.resizeObserver.observe(this.element);
 		}
 
 		this.mainLine.show();
@@ -74,10 +63,7 @@ export class LyricLineGroup extends LyricLineGroupBase<LyricLineEl> {
 
 	hide(): void {
 		if (this.element.parentElement) {
-			const isMobile = typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent);
-			if (!isMobile) {
-				this.lyricPlayer.resizeObserver.unobserve(this.element);
-			}
+			this.lyricPlayer.resizeObserver.unobserve(this.element);
 			this.element.remove();
 
 			this.mainLine.teardownContent();

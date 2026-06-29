@@ -3453,7 +3453,7 @@ var LyricLineGroup = class extends LyricLineGroupBase {
 		this.element.className = lyric_player_module_default.lyricLineWrapper;
 		this.element.appendChild(mainLine.getElement());
 		this.posY.setPosition(window.innerHeight * 2);
-		if (!(typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent))) lyricPlayer.resizeObserver.observe(this.element);
+		lyricPlayer.resizeObserver.observe(this.element);
 	}
 	get isInSight() {
 		const t = this.posY.getCurrentPosition();
@@ -3476,19 +3476,14 @@ var LyricLineGroup = class extends LyricLineGroupBase {
 				}
 			}
 			playerEl.insertBefore(this.element, referenceNode);
-			if (typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent)) {
-				if (!this.lyricPlayer.lyricGroupSize.has(this)) {
-					const h = this.element.clientHeight || 0;
-					this.lyricPlayer.lyricGroupSize.set(this, [this.element.clientWidth, h]);
-				}
-			} else this.lyricPlayer.resizeObserver.observe(this.element);
+			this.lyricPlayer.resizeObserver.observe(this.element);
 		}
 		this.mainLine.show();
 		this.bgLine?.show();
 	}
 	hide() {
 		if (this.element.parentElement) {
-			if (!(typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent))) this.lyricPlayer.resizeObserver.unobserve(this.element);
+			this.lyricPlayer.resizeObserver.unobserve(this.element);
 			this.element.remove();
 			this.mainLine.teardownContent();
 			this.bgLine?.teardownContent();
@@ -4638,10 +4633,9 @@ var LyricLineEl = class extends LyricLineBase {
 		}
 	}
 	update(delta = 0) {
-		if (this.lyricPlayer.getEnableSpring()) {
-			this.lineTransforms.scale.update(delta);
-			this.rebuildStyle();
-		}
+		if (!this.lyricPlayer.getEnableSpring()) return;
+		this.lineTransforms.scale.update(delta);
+		this.rebuildStyle();
 		if (!this.built) return;
 		const currentScale = this.lineTransforms.scale.getCurrentPosition() / 100;
 		this.updateMaskAlphaTargets(currentScale);
@@ -4727,7 +4721,7 @@ var DomLyricPlayer = class extends LyricPlayerBase {
 		this.rebuildStyle();
 	}
 	supportPlusLighter = CSS.supports("mix-blend-mode", "plus-lighter");
-	supportMaskImage = typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent) ? false : CSS.supports("mask-image", "none");
+	supportMaskImage = CSS.supports("mask-image", "none");
 	innerSize = [0, 0];
 	onMouseEventHandler = (e) => {
 		const target = e.target;

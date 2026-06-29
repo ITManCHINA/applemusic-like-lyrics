@@ -1020,10 +1020,10 @@ export class LyricLineEl extends LyricLineBase {
 	}
 
 	update(delta = 0): void {
-		if (this.lyricPlayer.getEnableSpring()) {
-			this.lineTransforms.scale.update(delta);
-			this.rebuildStyle();
-		}
+		if (!this.lyricPlayer.getEnableSpring()) return;
+
+		this.lineTransforms.scale.update(delta);
+		this.rebuildStyle();
 
 		if (!this.built) return;
 
